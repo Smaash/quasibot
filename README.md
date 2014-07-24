@@ -69,7 +69,7 @@ Bots
  - Add Windows support to 'PWN' module
  - Automatic attacks on servers
  - Backdoors creation (backconnects)
- - Source code cleanup, it's still pretty shitty
+ - Source code cleanup, it's still pretty shitty; amount of required files should be reduced
  - ???
 
 ...and ofc., it's for educational purposes only ;)

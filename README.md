@@ -3,8 +3,8 @@ quasibot
 
 quasiBot 0.1 - Read Me
 
-Date - 24.07.14
-Author - Smash (smash[at]devilteam.pl)
+Date: 24.07.14
+Author: Smash (smash[at]devilteam.pl)
 
 #Agenda
 

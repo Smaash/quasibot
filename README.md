@@ -3,7 +3,7 @@ quasibot
 
 quasiBot 0.1 - Read Me
 
-#1 Agenda
+#Agenda
 
 QuasiBot is a complex webshell manager written in PHP, which operate on web-based backdoors implemented by user himself. Using prepared php backdoors, quasiBot will work as C&C trying to communicate with each backdoor. Tool goes beyond average web-shell managers, since it delivers useful functions for scanning, exploiting and so on. It is quasi-HTTP botnet, therefore it is called. 
 
@@ -12,7 +12,7 @@ All data about bots is stored in SQL database, ATM only MySQL is supported. TOR 
 You will need any web server software; tested on Linux, Apache 2.2 and PHP 5.4.4.
 
 
-#2 How it works?
+#How it works?
 
  - quasiBot is operating on web-shells delivered by user, each backdoor is being verified by md5 hash which changes every hour
 
@@ -34,7 +34,7 @@ You will need any web server software; tested on Linux, Apache 2.2 and PHP 5.4.4
  - Whole front-end is maintaned in a pleasant, functional interface
 
 
-#3 Screens
+#Screens
 
 Home
  - Index - http://i.imgur.com/tzUFm4x.png
@@ -55,14 +55,14 @@ Bots
  - Run - http://i.imgur.com/J3aIutf.png
 
 
-#4 Running quasi for first time
+#Running quasi for first time
 
  - Move all files to prepared directory, change default settings in config file (config.php)
  - Visiting quasiBot for the first time will create needed database and it's structure
  - In 'Settings' tab, you are able to add and delete shells, you're ready to go
 
 
-#5 Todo
+#Todo
 
  - Authorization system
  - Move Linux Exploit Suggestor to PHP language

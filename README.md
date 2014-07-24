@@ -3,10 +3,6 @@ quasibot
 
 quasiBot 0.1 - Read Me
 
-Author: Smash (smash[at]devilteam.pl)
-GitHub project: https://github.com/Smaash/quasibot
-Date: 24.07.14
-
 1. Agenda
 
 QuasiBot is a complex webshell manager written in PHP, which operate on web-based backdoors implemented by user himself. Using prepared php backdoors, quasiBot will work as C&C trying to communicate with each backdoor. Tool goes beyond average web-shell managers, since it delivers useful functions for scanning, exploiting and so on. It is quasi-HTTP botnet, therefore it is called. 

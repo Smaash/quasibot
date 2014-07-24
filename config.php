@@ -29,7 +29,7 @@ define('PROXY_PORT', '9050');
 define('SQL_HOST', 'localhost');
 define('SQL_USER', 'root');
 define('SQL_PWD', 'fuckyou');
-define('SQL_DB', 'quasibot');
+define('SQL_DB', 'quasibot');rss()
 
 //Misc
 define('LEX', 'lex.pl'); //Linux Exploit Suggester filename
@@ -380,97 +380,6 @@ function quotes() {
 $quotes=array("&quot;When solving problems, dig at the roots instead of just hacking at the leaves&quot;  <font size='1' color='gray'>Anthony J. D'Angelo</font>","&quot;The difference between stupidity and genius is that genius has its limits&quot;  <font size='1' color='gray'>Albert Einstein</font>","&quot;As a young boy, I was taught in high school that hacking was cool.&quot;  <font size='1' color='gray'>Kevin Mitnick</font>", "&quot;A lot of hacking is playing with other people, you know, getting them to do strange things.&quot;  <font size='1' color='gray'>Steve Wozniak</font>","&quot;If you give a hacker a new toy, the first thing he'll do is take it apart to figure out how it works.&quot;  <font size='1' color='gray'>Jamie Zawinski</font>", "&quot;Software Engineering might be science; but that's not what I do. I'm a hacker, not an engineer.&quot;  <font size='1' color='gray'>Jamie Zawinski</font>", "&quot;Never underestimate the determination of a kid who is time-rich and cash-poor&quot;  <font size='1' color='gray'>Cory Doctorow</font>", "&quot;It’s hardware that makes a machine fast. It’s software that makes a fast machine slow.&quot;  <font size='1' color='gray'>Craig Bruce</font>", "&quot;The function of good software is to make the complex appear to be simple.&quot;  <font size='1' color='gray'>Grady Booch</font>", "&quot;Pasting code from the Internet into production code is like chewing gum found in the street.&quot;  <font size='1' color='gray'>Anonymous</font>", "&quot;Tell me what you need and I'll tell you how to get along without it.&quot;  <font size='1' color='gray'>Anonymous</font>", "&quot;Fuck shit up!&quot;  <font size='1' color='gray'>Smash</font>", "&quot;Once we accept our limits, we go beyond them.&quot; <font size='1' color='gray'>Albert Einstein</font>", "&quot;Listen to many, speak to a few.&quot; <font size='1' color='gray'>William Shakespeare</font>", "&quot;The robbed that smiles, steals something from the thief.&quot; <font size='1' color='gray'>William Shakespeare</font>");
 $quote = $quotes[array_rand($quotes)];
 echo '<p>'.$quote.'</p>';
-}
-
-function rss() {
-     $rss = new DOMDocument();
-    $rss->load('http://nvd.nist.gov/download/nvd-rss.xml');
-    $feed = array();
-    foreach ($rss->getElementsByTagName('item') as $node) {
-    $item = array (
-    'title' => $node->getElementsByTagName('title')->item(0)->nodeValue,
-    'desc' => $node->getElementsByTagName('description')->item(0)->nodeValue,
-    'link' => $node->getElementsByTagName('link')->item(0)->nodeValue,
-    'date' => $node->getElementsByTagName('pubDate')->item(0)->nodeValue,
-    );
-    array_push($feed, $item);
-    }
-    $limit = 10;
-    for($x=0;$x<$limit;$x++) {
-    $title = str_replace(' & ', ' &amp; ', $feed[$x]['title']);
-    $link = $feed[$x]['link'];
-    $description = $feed[$x]['desc'];
-    $date = date('d.m.y', strtotime($feed[$x]['date']));
-    echo '<p><strong><a href="'.$link.'" title="'.$title.'">'.$title.'</a></strong><br />';
-    echo '<small><em>Opublikowano '.$date.'</em></small></p>';
-    echo '<p>'.$description.'</p>';
-    }
-    ?>
-
-                        </div>
-                    </div>
-                    
-                      <div class="post">
-                        <h2 class="title"><a name="securityfocus" href="#top" >Security Focus</a></h2>
-                        <div class="entry">
-                            <p class="meta">securityfocus.com</p>
-
-    <?php
-    $rss = new DOMDocument();
-    $rss->load('http://www.securityfocus.com/rss/vulnerabilities.xml');
-    $feed = array();
-    foreach ($rss->getElementsByTagName('item') as $node) {
-    $item = array (
-    'title' => $node->getElementsByTagName('title')->item(0)->nodeValue,
-    'desc' => $node->getElementsByTagName('description')->item(0)->nodeValue,
-    'link' => $node->getElementsByTagName('link')->item(0)->nodeValue,
-    'date' => $node->getElementsByTagName('pubDate')->item(0)->nodeValue,
-    );
-    array_push($feed, $item);
-    }
-    $limit = 10;
-    for($x=0;$x<$limit;$x++) {
-    $title = str_replace(' & ', ' &amp; ', $feed[$x]['title']);
-    $link = $feed[$x]['link'];
-    $description = $feed[$x]['desc'];
-    $date = date('d.m.y', strtotime($feed[$x]['date']));
-    echo '<p><strong><a href="'.$link.'" title="'.$title.'">'.$title.'</a></strong><br />';
-    echo '<small><em>Opublikowano '.$date.'</em></small></p>';
-    echo '<p>'.$description.'</p>';
-    }
-    ?>
-
-                        </div>
-                    </div>
-                    
-                        <div class="post">
-                        <h2 class="title"><a name="cxsecurity" href="#top" >cxsecurity</a></h2>
-                        <div class="entry">
-                            <p class="meta">cxsecurity.com</p>
-
-    <?php
-    $rss = new DOMDocument();
-    $rss->load('http://cxsecurity.com/wlb/rss/all/');
-    $feed = array();
-    foreach ($rss->getElementsByTagName('item') as $node) {
-    $item = array (
-    'title' => $node->getElementsByTagName('title')->item(0)->nodeValue,
-    'desc' => $node->getElementsByTagName('description')->item(0)->nodeValue,
-    'link' => $node->getElementsByTagName('link')->item(0)->nodeValue,
-    'date' => $node->getElementsByTagName('pubDate')->item(0)->nodeValue,
-    );
-    array_push($feed, $item);
-    }
-    $limit = 10;
-    for($x=0;$x<$limit;$x++) {
-    $title = str_replace(' & ', ' &amp; ', $feed[$x]['title']);
-    $link = $feed[$x]['link'];
-    $description = $feed[$x]['desc'];
-    $date = date('d.m.y', strtotime($feed[$x]['date']));
-    echo '<p><strong><a href="'.$link.'" title="'.$title.'">'.$title.'</a></strong><br />';
-    echo '<small><em>Opublikowano '.$date.'</em></small></p>';
-    echo '<p>'.$description.'</p>';
-    }
 }
 
 function rce()

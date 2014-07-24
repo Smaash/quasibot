@@ -1,4 +1,4 @@
-quasibot
+quasiBot
 ========
 
 quasiBot 0.1 - Read Me (24.07.14)

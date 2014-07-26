@@ -1,7 +1,6 @@
 <?php
 
 require('config.php');
-//conn("http://pysio.pl/include/register_lib.php?_=system&__=ls");
 checksql();
 
 ?>

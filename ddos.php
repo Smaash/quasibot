@@ -1,7 +1,7 @@
 <?php
 
 require('config.php');
-checksql();
+auth();
 
 ?>
 
@@ -143,6 +143,7 @@ quotes();
                                 <li><a href="rce.php">RCE</a></li>
                                 <li><a href="scan.php">Scan</a></li>
                                 <li><a href="pwn.php">Pwn</a></li>
+                                 <li><a href="shell.php">Shell</a></li>
                             </ul>
                         </li>
                         <li>

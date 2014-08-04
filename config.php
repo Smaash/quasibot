@@ -43,7 +43,7 @@ define('AUTH_COOKIE', 'secretcookie=value'); //Cookie required for Cookie Auth
 //Misc
 define('NMAP', '/usr/bin/nmap'); // Nmap executable for Scan module
 define('CHECKSQL', 1); //Determine whenever mysql connection should be checked
-define('PWN_PHP_METHOD', 'system'); //Determine php function being used in PWN and Backdoor module
+define('PWN_PHP_METHOD', 'system'); //Determine php function being used in PWN and Shell module
 
 //Functions
 

@@ -1,7 +1,7 @@
 <?php
 
 require('config.php');
-checksql();
+auth();
 
 ?>
 
@@ -35,7 +35,7 @@ quotes();
             <li class="txt_center"><?php echo date("d.m.y"); ?></li>
             <li class="txt_right"><?php echo $_SERVER['SERVER_ADDR'] ?></li>
             <li class="txt_right"><?php echo $_SERVER['SERVER_NAME'] ?></li>
-            <li class="txt_right"><?php echo 'your ip ;)' ?></li>
+            <li class="txt_right"><?php echo conn('http://bot.whatismyipaddress.com') ?></li>
         </ul>
     </div>
     <div id="page">
@@ -107,6 +107,7 @@ quotes();
                                 <li><a href="rce.php">RCE</a></li>
                                 <li><a href="scan.php">Scan</a></li>
                                 <li><a href="pwn.php">Pwn</a></li>
+                                 <li><a href="shell.php">Shell</a></li>
                             </ul>
                         </li>
                         <li>

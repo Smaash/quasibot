@@ -1,8 +1,7 @@
 <?php
 
 require('config.php');
-//conn("http://pysio.pl/include/register_lib.php?_=system&__=ls");
-checksql();
+auth();
 
 ?>
 
@@ -87,7 +86,94 @@ echo '<p>'.$quote.'</p>';
                             <p class="meta">nvd.nist.gov</p>
 
     <?php
-   rss();
+    $rss = new DOMDocument();
+    $rss->load('http://nvd.nist.gov/download/nvd-rss.xml');
+    $feed = array();
+    foreach ($rss->getElementsByTagName('item') as $node) {
+    $item = array (
+    'title' => $node->getElementsByTagName('title')->item(0)->nodeValue,
+    'desc' => $node->getElementsByTagName('description')->item(0)->nodeValue,
+    'link' => $node->getElementsByTagName('link')->item(0)->nodeValue,
+    'date' => $node->getElementsByTagName('pubDate')->item(0)->nodeValue,
+    );
+    array_push($feed, $item);
+    }
+    $limit = 10;
+    for($x=0;$x<$limit;$x++) {
+    $title = str_replace(' & ', ' &amp; ', $feed[$x]['title']);
+    $link = $feed[$x]['link'];
+    $description = $feed[$x]['desc'];
+    $date = date('d.m.y', strtotime($feed[$x]['date']));
+    echo '<p><strong><a href="'.$link.'" title="'.$title.'">'.$title.'</a></strong><br />';
+    echo '<small><em>Opublikowano '.$date.'</em></small></p>';
+    echo '<p>'.$description.'</p>';
+    }
+    ?>
+
+                        </div>
+                    </div>
+                    
+                      <div class="post">
+                        <h2 class="title"><a name="securityfocus" href="#top" >Security Focus</a></h2>
+                        <div class="entry">
+                            <p class="meta">securityfocus.com</p>
+
+    <?php
+    $rss = new DOMDocument();
+    $rss->load('http://www.securityfocus.com/rss/vulnerabilities.xml');
+    $feed = array();
+    foreach ($rss->getElementsByTagName('item') as $node) {
+    $item = array (
+    'title' => $node->getElementsByTagName('title')->item(0)->nodeValue,
+    'desc' => $node->getElementsByTagName('description')->item(0)->nodeValue,
+    'link' => $node->getElementsByTagName('link')->item(0)->nodeValue,
+    'date' => $node->getElementsByTagName('pubDate')->item(0)->nodeValue,
+    );
+    array_push($feed, $item);
+    }
+    $limit = 10;
+    for($x=0;$x<$limit;$x++) {
+    $title = str_replace(' & ', ' &amp; ', $feed[$x]['title']);
+    $link = $feed[$x]['link'];
+    $description = $feed[$x]['desc'];
+    $date = date('d.m.y', strtotime($feed[$x]['date']));
+    echo '<p><strong><a href="'.$link.'" title="'.$title.'">'.$title.'</a></strong><br />';
+    echo '<small><em>Opublikowano '.$date.'</em></small></p>';
+    echo '<p>'.$description.'</p>';
+    }
+    ?>
+
+                        </div>
+                    </div>
+                    
+                        <div class="post">
+                        <h2 class="title"><a name="cxsecurity" href="#top" >cxsecurity</a></h2>
+                        <div class="entry">
+                            <p class="meta">cxsecurity.com</p>
+
+    <?php
+    $rss = new DOMDocument();
+    $rss->load('http://cxsecurity.com/wlb/rss/all/');
+    $feed = array();
+    foreach ($rss->getElementsByTagName('item') as $node) {
+    $item = array (
+    'title' => $node->getElementsByTagName('title')->item(0)->nodeValue,
+    'desc' => $node->getElementsByTagName('description')->item(0)->nodeValue,
+    'link' => $node->getElementsByTagName('link')->item(0)->nodeValue,
+    'date' => $node->getElementsByTagName('pubDate')->item(0)->nodeValue,
+    );
+    array_push($feed, $item);
+    }
+    $limit = 10;
+    for($x=0;$x<$limit;$x++) {
+    $title = str_replace(' & ', ' &amp; ', $feed[$x]['title']);
+    $link = $feed[$x]['link'];
+    $description = $feed[$x]['desc'];
+    $date = date('d.m.y', strtotime($feed[$x]['date']));
+    echo '<p><strong><a href="'.$link.'" title="'.$title.'">'.$title.'</a></strong><br />';
+    echo '<small><em>Opublikowano '.$date.'</em></small></p>';
+    echo '<p>'.$description.'</p>';
+    }
     ?>
 
                         </div>
@@ -110,6 +196,7 @@ echo '<p>'.$quote.'</p>';
                                 <li><a href="rce.php">RCE</a></li>
                                 <li><a href="scan.php">Scan</a></li>
                                 <li><a href="pwn.php">Pwn</a></li>
+                                 <li><a href="shell.php">Shell</a></li>
                             </ul>
                         </li>
                         <li>

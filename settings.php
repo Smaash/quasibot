@@ -1,7 +1,7 @@
 <?php
 
 require('config.php');
-checksql();
+auth();
 
 ?>
 
@@ -57,6 +57,12 @@ quotes();
                             } else {
                             echo '<b>No</b></p>';
                             }
+                            echo '<p>Using auth - ';
+                            if(AUTH_ENABLE == 1) {
+                            echo '<b>Yes</b> (<a href="'.$_SERVER['PHP_SELF'].'?logout">logout</a>)</p>';
+                            } else {
+                            echo '<b>No</b></p>';
+                            }
                             echo '<p>Connection - '.htmlspecialchars(SQL_USER).' @ '.htmlspecialchars(SQL_HOST).' using database '.htmlspecialchars(SQL_DB).'</p>';
                             ?>
                         </div>
@@ -109,6 +115,7 @@ quotes();
                                 <li><a href="rce.php">RCE</a></li>
                                 <li><a href="scan.php">Scan</a></li>
                                 <li><a href="pwn.php">Pwn</a></li>
+                                <li><a href="shell.php">Shell</a></li>
                             </ul>
                         </li>
                         <li>

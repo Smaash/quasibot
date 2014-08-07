@@ -90,6 +90,7 @@ Changelog:
  - Bruteforce: SSH, FTP, WWW, DB's
  - Details
 
+
 - 0.2
  - Added authorization (Sessions / Cookie Auth)
  - Added Shell Module (Reverse / Bind shell)

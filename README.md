@@ -86,7 +86,7 @@ Todo:
 
 Changelog:
 
--0.3
+- 0.3
  - Bruteforce: SSH, FTP, WWW, DB's
  - Details
 

@@ -60,7 +60,7 @@ a:hover {
 }
 
 #wrapper {
-    width: 960px;
+   
     margin: 0 auto;
     padding: 0;
 }
@@ -68,7 +68,7 @@ a:hover {
 /* Header */
 
 #header {
-    width: 960px;
+    width: 500px;
     height: 110px;
     margin: 0 auto;
 }
@@ -180,7 +180,6 @@ a:hover {
 /* Page */
 
 #page {
-    width: 960px;
     margin: 0 auto;
     padding: 20px 0px 0px 0px;
 }

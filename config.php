@@ -21,13 +21,13 @@ define('PROXY_PORT', '9050');
 // SQL Connection
 define('SQL_HOST', 'localhost');
 define('SQL_USER', 'root');
-define('SQL_PWD', 'pass');
+define('SQL_PWD', 'fuckyou');
 define('SQL_DB', 'quasibot');
 
 //Authentication, default credentials - quasi:changeme
 define('AUTH_ENABLE', 1); //0 - Disable, 1 - Enable
 define('AUTH_USER', 'quasi'); //Auth login
-define('AUTH_PASS', md5('quasi')); //Auth password, MD5 encrypted
+define('AUTH_PASS', '4cb9c8a8048fd02294477fcb1a41191a'); //Auth password, MD5 encrypted
 define('AUTH_USECOOKIE', 0); //0 - Disable, 1 - Enable; Cookie Auth Protection
 define('AUTH_COOKIE', 'secretcookie=value'); //Cookie required for Cookie Auth
 

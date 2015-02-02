@@ -470,9 +470,9 @@ p
             if ($conn)  {
         echo "<font color=\"#00FF00\">" . $uzytkownik . ':' . $haslo . " - Success!</font><br />";
         
-        $dbuser = mysql_query("SELECT USER();");
+        $dbuser = mysqli_query($conn,"SELECT USER();");
         $dbuzer = mysql_fetch_row($dbuser);
-        $dbdb = mysql_query("SELECT DATABASE();");
+        $dbdb = mysqli_query($conn,"SELECT DATABASE();");
         $dbd = mysql_fetch_row($dbdb);
         echo '<br /><b>General info</b><br />';
         echo 'MySql version - <a href="http://www.cvedetails.com/version-search.php?vendor=Mysql&product=Mysql&version='.mysql_get_client_info().'">'.mysql_get_client_info().'</a><br />';
@@ -480,13 +480,13 @@ p
         echo 'Current user - '.$dbuzer[0].'<br />';
 
         echo '<br /><b>Databases</b><br />';
-        $res = mysql_query("SHOW DATABASES");
+        $res = mysqli_query($conn,"SHOW DATABASES");
 
     while ($row = mysql_fetch_assoc($res)) {
         echo $row['Database'] . "<br />";
     }
 
-        mysql_close($conn);
+        mysqli_close($conn);
         break;
             } else {
         echo "<font color=\"#990000\">" . $uzytkownik . ':' . $haslo . "</font><br />";

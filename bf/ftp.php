@@ -16,28 +16,6 @@ auth();
 </head>
 <body>
 <div id="wrapper">
-    <div id="header">
-
-
-        <div id="logo">
-            <h1><a href="index.php">&nbsp; &nbsp; &nbsp;<?php echo date('H:i:s') ?></a></h1>
-
-<?php
-quotes();
-?>
-
-        </div>
-    </div>
-    <div id="menu">
-        <ul>
-            <li class="txt_left"><?php echo $_SERVER['DOCUMENT_ROOT'] ?></li>
-            <li class="txt_left"><?php echo $_SERVER['PHP_SELF'] ?></li>
-            <li class="txt_center"><?php echo date("d.m.y"); ?></li>
-            <li class="txt_right"><?php echo $_SERVER['SERVER_ADDR'] ?></li>
-            <li class="txt_right"><?php echo $_SERVER['SERVER_NAME'] ?></li>
-            <li class="txt_right"><?php echo conn('http://bot.whatismyipaddress.com/') ?></li>
-        </ul>
-    </div>
     <div id="page">
         <div id="page-bgtop">
             <div id="page-bgbtm">
@@ -140,57 +118,10 @@ quotes();
 
                     <div style="clear: both;">&nbsp;</div>
                 </div>
-                <div id="sidebar">
-                    <ul>
-                        <li>
-                            <h2>Home</h2>
-                            <ul>
-                                <li><a href="../home/index.php">Index</a></li>
-                                <li><a href="../home/settings.php">Settings</a></li>
-                                <li><a href="../home/rss.php">RSS</a></li>
-                            </ul>
-                        </li>
-                        <li>
-                           <h2>Hack</h2>
-                            <ul>
-                                <li><a href="../hack/rce.php">RCE</a></li>
-                                <li><a href="../hack/scan.php">Scan</a></li>
-                                <li><a href="../hack/pwn.php">Pwn</a></li>
-                                <li><a href="../hack/shell.php">Shell</a></li>
-                            </ul>
-                        </li>
-                        <li>
-                        <li>
-                           <h2>Bruteforce</h2>
-                            <ul>
-                                <li><a href="ssh.php">SSH</a></li>
-                                <li><a href="ftp.php"><b>FTP</b></a></li>
-                                <li><a href="dbs.php">DB's</a></li>
-                                <li><a href="www.php">WWW</a></li>
-                            </ul>
-                        </li>
-                        <li>
-                           <h2>Tools</h2>
-                            <ul>
-                                <li><a href="../tools/sql.php">MySQL Manager</a></li>
-                                <li><a href="../tools/hostscan.php">HostScan</a></li>
-                             </ul>
-                        </li>
-                        <li>
-                           <h2>Bots</h2>
-                            <ul>
-                                <li><a href="../hack/ddos.php">DDoS</a></li>
-                                <li><a href="../hack/more.php">Run</a></li>
-                             </ul>
-                        </li>
-                </div>
                 <div style="clear: both;">&nbsp;</div>
             </div>
         </div>
     </div>
-</div>
-<div id="footer">
-    <p><?php echo $_SERVER['SERVER_SOFTWARE']; echo '  -  '; echo $_SERVER['HTTP_USER_AGENT'] ?></p>
 </div>
 </body>
 </html>
